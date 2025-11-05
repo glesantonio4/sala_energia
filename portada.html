@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <meta name="theme-color" content="#7d2184">
+  <title>MUCH · Portada</title>
+  <style>
+    :root {
+  --ink:#0b1220;         /* texto principal, contraste fuerte */
+  --paper:#ffffff;       /* fondo base */
+  --paper-2:#f8fafc;     /* fondo claro alterno */
+
+  /* Gradientes energéticos */
+  --bg1:#323bef;         /* naranja eléctrico */
+  --bg2:#b994fe;         /* amarillo energía solar */
+  --bg3:#06b6d4;         /* turquesa del MUCH, para coherencia */
+
+  /* Colores del MUCH */
+  --turquesa:#06b6d4;  /* primario institucional */
+  --verde:#2de36f;     /* secundario ecológico */
+  --ambar:#f59e0b;     /* soporte cálido */
+  --fucsia:#d946ef;    /* acentos brand */
+
+  /* Paleta Energía */
+  --naranja:#6350f3;   /* energía / calor / potencia */
+  --amarillo:#ffcc00;  /* electricidad / solar */
+  --azul-electrico:#0077ff; /* acento eléctrico */
+
+  /* Derivados y estados */
+  --naranja-700:#5b4fda;
+  --amarillo-700:#3d48dc;
+  --azul-700:#1d4ed8;
+
+  /* UI */
+  --card-bg: linear-gradient(135deg, var(--azul-700), var(--azul-electrico));
+  --card-br:24px;
+  --shadow-soft:0 10px 30px rgba(2,6,23,.15);
+}
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%}
+    body{
+      min-height:100svh;
+      display:grid; place-items:center;
+      background: radial-gradient(1200px 600px at 10% 0%, var(--bg1), transparent),
+                  linear-gradient(180deg, var(--bg1), var(--bg2));
+      padding:
+        max(12px, env(safe-area-inset-top))
+        max(12px, env(safe-area-inset-right))
+        max(16px, env(safe-area-inset-bottom))
+        max(12px, env(safe-area-inset-left));
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    .card{
+      width:min(920px, 94vw);
+      border-radius:var(--card-br);
+      background:linear-gradient(180deg, var(--card-bg1), var(--card-bg2));
+      border:1px solid rgba(255,255,255,.45);
+      box-shadow:0 30px 80px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.2);
+      padding:clamp(16px, 5vw, 32px);
+      text-align:center; color:var(--white);
+      backdrop-filter: blur(6px);
+      position:relative;
+      overflow:visible;
+    }
+
+    /* Logos de esquina */
+    .logo-esquina{
+      position:absolute;
+      top:-65px;
+      width:auto;
+      border-radius:12px;
+      background:#fff;
+      padding:6px 10px;
+      box-shadow:0 6px 14px rgba(0,0,0,.25);
+    }
+   .logo-izq-abs{ 
+      left:20px; 
+      height:43px;
+    }
+    .logo-der-abs{ 
+      right:20px; 
+      height:44px;
+      background:#f6f6f6;
+    }
+
+    /* Logo MUCH */
+    .logo-much{
+      display:block;
+      margin:0 auto clamp(16px, 4vw, 24px);
+      height:100px;
+      width:auto;
+      filter: drop-shadow(0 4px 10px rgba(0,0,0,.25));
+    }
+
+    h1{
+      font-size: clamp(25px, 7vw, 50px);
+      line-height:1.05; font-weight:900; letter-spacing:.6px;
+      text-shadow:0 2px 8px rgba(0,0,0,.35);
+      margin: 6px 0 10px;
+    }
+    p.sub{
+      font-size:clamp(14px, 3.8vw, 20px); 
+      opacity:.95; 
+      margin-bottom:clamp(12px, 4vw, 18px)
+    }
+
+    .btn{
+      appearance:none; border:0; cursor:pointer; display:inline-block; text-decoration:none;
+      padding:clamp(12px, 3.8vw, 16px) clamp(18px, 6vw, 22px);
+      border-radius:16px; font-weight:900;
+      font-size:clamp(16px, 4vw, 20px); color:#fff;
+      background:linear-gradient(135deg,#f72585,#7209b7);
+      box-shadow:0 18px 44px rgba(155,92,249,.35),0 6px 16px rgba(0,0,0,.25);
+      min-width:200px; min-height:48px;
+      transition: transform .06s, box-shadow .2s;
+    }
+    .btn:active{ transform: translateY(1px); }
+
+    .tip{margin-top:clamp(10px, 3vw, 14px); font-size:clamp(12px, 3.4vw, 14px); opacity:.9}
+
+    @media (orientation: landscape) and (max-height: 480px){
+      .card{ padding:16px; border-radius:18px; }
+      .logo-izq-abs{ height:40px; top:-50px; }
+      .logo-der-abs{ height:45px; top:-50px; }
+      .btn{ min-width:200px; padding:12px 16px; }
+    }
+
+    /* Tamaño vertical más chico + ambos logos un poquito más arriba */
+    @media (orientation: portrait){
+      .logo-izq-abs{
+        top:-56px;
+        height:50px;
+      }
+      .logo-der-abs{
+        top:-60px;
+        height:56px;
+      }
+    }
+
+    /* si la pantalla está bajita (vertical) */
+    @media (orientation: portrait) and (max-height:650px){
+      .logo-izq-abs{
+        top:-49px;
+        height:44px;
+      }
+      .logo-der-abs{
+        top:-53px;
+        height:48px;
+      }
+    }
+
+  </style>
+</head>
+<body>
+  <main class="card">
+    <img src="Logo-Ag-14.png" alt="Logo Aditech" class="logo-esquina logo-izq-abs">
+    <img src="logo-sata.png" alt="Logo SATA" class="logo-esquina logo-der-abs">
+
+    <img src="logo-much.png" alt="Logo MUCH" class="logo-much">
+
+    <h1>MUCH</h1>
+    <p class="sub">Aprende y gana premios!! 🎁</p>
+
+    <a class="btn" href="index.html?from=portada">🚀 Jugar ahora</a>
+    <p class="tip">Tip: Lee cuidasosamente las preguntas 🦖</p>
+  </main>
+</body>
+</html>

@@ -1,0 +1,234 @@
+<!DOCTYPE html> 
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Registro para obtener tu premio</title>
+  <link rel="stylesheet" href="styles.css"/>
+
+  <style>
+    :root{
+      --card-bg:#23272f; --card-br:18px; --shadow-soft:0 2px 12px rgba(0,0,0,.12);
+      --gris-200:#e5e7eb; --gris-300:#d1d5db; --gris-600:#4b5563; --gris-700:#374151;
+      --fucsia:#e6007a; --turquesa:#00c9b7; --error:#ef4444; --ok:#10b981;
+    }
+    body{
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      min-height:100vh; padding:30px; background:#181a20; color:#fff;
+    }
+    .registro-container{
+      background:var(--card-bg); border-radius:var(--card-br); box-shadow:var(--shadow-soft);
+      padding:24px 22px 26px; width:100%; max-width:520px; border:1px solid var(--gris-300);
+    }
+
+    /* ——— Logo responsive ——— */
+    .logo-wrap{ display:flex; justify-content:center; margin-bottom:10px; }
+    .brand-logo{
+      /* ancho flexible: chico en móvil, más grande en desktop */
+      width: clamp(120px, 42vw, 220px);
+      max-width: 70%;
+      height: auto;                 /* mantiene proporción */
+      display:block;
+      image-rendering:-webkit-optimize-contrast;
+      -ms-interpolation-mode: bicubic;
+      filter: drop-shadow(0 2px 8px rgba(0,0,0,.35));
+    }
+    /* Opcional: pon la clase 'badge' si tu logo pierde contraste en fondo oscuro */
+    .brand-logo.badge{
+      background:#fff;
+      border-radius:12px;
+      padding:6px 10px;
+    }
+
+    h2{ text-align:center; margin:8px 0 14px; color:var(--fucsia); line-height:1.2; }
+    p.lead{ text-align:center; margin:0 0 18px; color:#cbd5e1; }
+
+    .form-group{ margin-bottom:18px; }
+    .form-group label{ font-weight:700; display:block; margin-bottom:8px; color:#e5e7eb; }
+    .form-group input{
+      width:100%; padding:12px; border-radius:10px; border:1px solid var(--gris-300);
+      font-size:16px; background:#0f1218; color:#fff; outline:none;
+    }
+    .form-group input:focus{ border-color:var(--turquesa); box-shadow:0 0 0 3px rgba(0,201,183,.2); }
+    .hint{ font-size:.85rem; color:#9ca3af; margin-top:6px; }
+    .error-msg{ font-size:.85rem; color:var(--error); margin-top:6px; display:none; }
+    .is-invalid{ border-color:var(--error) !important; box-shadow:0 0 0 3px rgba(239,68,68,.2) !important; }
+
+    .submit-btn{
+      background:linear-gradient(90deg, var(--turquesa), var(--fucsia));
+      color:#fff; font-weight:800; padding:14px; border:0; border-radius:12px;
+      width:100%; cursor:pointer; font-size:18px; transition:opacity .2s, transform .02s;
+    }
+    .submit-btn:active{ transform:scale(.995); }
+    .submit-btn[disabled]{ opacity:.6; cursor:not-allowed; }
+
+    /* Ajustes muy pequeños (teléfonos angostos) */
+    @media (max-width: 360px){
+      .registro-container{ padding:18px 16px 22px; }
+      h2{ font-size:1.15rem; }
+      .brand-logo{ width: clamp(110px, 50vw, 180px); }
+    }
+  </style>
+</head>
+<body>
+  <div class="registro-container">
+    <!-- Logo -->
+    <div class="logo-wrap">
+      <!-- Si necesitas más contraste, agrega la clase 'badge' abajo -->
+      <img src="./logo-much.png" alt="MUCH · Museo de Ciencia y Tecnología" class="brand-logo">
+    </div>
+
+    <h2> Regístrate para reclamar tu premio 🐆</h2>
+    <p class="lead">Gracias por Visitar el MUCH</p>
+
+    <form id="registroForm" autocomplete="off" novalidate>
+      <!-- Nombre -->
+      <div class="form-group">
+        <label for="nombre">Nombre completo</label>
+        <input
+          type="text" id="nombre" name="nombre" required
+          inputmode="text" minlength="6" maxlength="80"
+          placeholder="Ej. Celi Glescanni"
+          title="Escribe tu nombre completo (mínimo 2 palabras)."
+        />
+        <div class="hint">Usa al menos dos palabras. Se permiten acentos y espacios.</div>
+        <div class="error-msg" id="err-nombre"></div>
+      </div>
+
+      <!-- Correo -->
+      <div class="form-group">
+        <label for="correo">Correo electrónico</label>
+        <input
+          type="email" id="correo" name="correo" required
+          inputmode="email" maxlength="120" placeholder="tucorreo@dominio.com"
+          autocomplete="email"
+        />
+        <div class="hint">Debe ser un correo válido (evita temporales).</div>
+        <div class="error-msg" id="err-correo"></div>
+      </div>
+
+      <!-- Teléfono -->
+      <div class="form-group">
+        <label for="telefono">Número de teléfono</label>
+        <input
+          type="tel" id="telefono" name="telefono" required
+          inputmode="numeric" pattern="[0-9]{10}" maxlength="10"
+          placeholder="Agrega 10 dígitos"
+          title="Solo números, de 10 dígitos."
+        />
+        <div class="hint">Solo 10 dígitos.</div>
+        <div class="error-msg" id="err-telefono"></div>
+      </div>
+
+      <button type="submit" id="submitBtn" class="submit-btn">Obtener mi Boleto</button>
+    </form>
+  </div>
+
+  <script>
+    // ---------- Validadores ----------
+    const reNombre = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+(?:[ \t]+[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'.-]+){1,}$/; // ≥2 palabras
+    const reEmail  = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
+    const rePhone  = /^\d{10}$/;
+    const disposableDomains = ["10minutemail.com","guerrillamail.com","tempmail.com","yopmail.com","mailinator.com","trashmail.com","sharklasers.com"];
+    const $ = (id) => document.getElementById(id);
+
+    function setError(inputEl, errEl, msg){ inputEl.classList.add('is-invalid'); errEl.textContent = msg; errEl.style.display = 'block'; }
+    function clearError(inputEl, errEl){ inputEl.classList.remove('is-invalid'); errEl.textContent = ''; errEl.style.display = 'none'; }
+
+    function validateNombre(raw){
+      const nombre = raw.trim().replace(/\s+/g,' ');
+      if (nombre.length < 6) return "Es muy corto. Escribe tu nombre completo.";
+      if (!reNombre.test(nombre)) return "Escribe al menos nombre y apellido (solo letras y espacios).";
+      return null;
+    }
+    function validateEmail(raw){
+      const email = raw.trim().toLowerCase();
+      if (!reEmail.test(email)) return "Correo no válido.";
+      const domain = email.split('@')[1] || '';
+      if (disposableDomains.includes(domain)) return "Este dominio de correo no es permitido.";
+      return null;
+    }
+    function validatePhone(raw){
+      const tel = raw.trim();
+      if (!rePhone.test(tel)) return "El teléfono debe tener 10 dígitos.";
+      return null;
+    }
+
+    // ---------- Submit ----------
+    let submitting = false;
+
+    $('registroForm').addEventListener('submit', function(e){
+      e.preventDefault();
+      if (submitting) return;
+      submitting = true;
+      $('submitBtn').setAttribute('disabled','disabled');
+
+      const nombre   = $('nombre').value;
+      const correo   = $('correo').value;
+      const telefono = $('telefono').value;
+
+      // Validar campos
+      let ok = true;
+      const nErr = validateNombre(nombre);  if (nErr){ ok=false; setError($('nombre'), $('err-nombre'), nErr); } else { clearError($('nombre'), $('err-nombre')); }
+      const cErr = validateEmail(correo);   if (cErr){ ok=false; setError($('correo'), $('err-correo'), cErr); } else { clearError($('correo'), $('err-correo')); }
+      const tErr = validatePhone(telefono); if (tErr){ ok=false; setError($('telefono'), $('err-telefono'), tErr); } else { clearError($('telefono'), $('err-telefono')); }
+
+      if (!ok){
+        submitting = false;
+        $('submitBtn').removeAttribute('disabled');
+        return;
+      }
+
+      // Intentar leer el premio que dejó el juego (much_quiz_prize)
+      let prizeData = null;
+      try{
+        const raw = localStorage.getItem('much_quiz_prize');
+        if (raw) prizeData = JSON.parse(raw);
+      }catch(_){}
+
+      // Plan B
+      if (!prizeData){
+        const folio = 'MUCH-' + Math.random().toString(36).substring(2,8).toUpperCase();
+        prizeData = {
+          title: 'MUCH · Premio',
+          label: 'Entrada al Planetario MUCH',
+          lugar: 'Planetario MUCH',
+          folio: folio,
+          date: new Date().toISOString(),
+          emoji: '🎁'
+        };
+        try { localStorage.setItem('much_quiz_prize', JSON.stringify(prizeData)); } catch(_){}
+      }
+
+      // Build params
+      const params = new URLSearchParams({
+        nombre:   nombre.trim().replace(/\s+/g,' '),
+        correo:   correo.trim().toLowerCase(),
+        telefono: telefono.trim(),
+        premio:   prizeData.label || '',
+        folio:    prizeData.folio || '',
+        lugar:    prizeData.lugar || ''
+      });
+
+      // Evitar doble canje
+      try { localStorage.removeItem('much_quiz_prize'); } catch(_){}
+
+      window.location.href = 'boleto.html?' + params.toString();
+    });
+
+    // Limpieza de errores
+    ['nombre','correo','telefono'].forEach(id=>{
+      $(id).addEventListener('input', () => {
+        const map = {
+          nombre:  [validateNombre, $('err-nombre')],
+          correo:  [validateEmail,  $('err-correo')],
+          telefono:[validatePhone,  $('err-telefono')]
+        };
+        const [fn, errEl] = map[id];
+        const msg = fn($(id).value);
+        if (msg) setError($(id), errEl, msg); else clearError($(id), errEl);
+      });
+    });
+  </script>
+</body>
+</html>

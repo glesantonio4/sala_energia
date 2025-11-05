@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Boleto Ganador · MUCH</title>
+
+  <style>
+    :root{
+      --ink:#0b1220; --muted:#64748b; --turquesa:#06b6d4; --fucsia:#d946ef;
+      --paper:#ffffff; --paper-line:#e5e7eb; --chip-bg:#ecfeff; --chip-ink:#075985;
+    }
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; overflow-x:hidden; }
+    img{ max-width:100%; height:auto; }
+    body{
+      margin:0;
+      font-family: system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+      color:var(--ink);
+      background:
+        radial-gradient(1200px 800px at 20% 20%, rgba(255,255,255,.5), transparent 60%),
+        linear-gradient(135deg, #0ea5b9, #ec4899, #38bdf8, #f472b6);
+      background-size:200% 200%;
+      animation:bgmove 24s ease-in-out infinite;
+      display:flex; align-items:center; justify-content:center;
+      padding:
+        max(24px, env(safe-area-inset-top))
+        max(24px, env(safe-area-inset-right))
+        max(24px, env(safe-area-inset-bottom))
+        max(24px, env(safe-area-inset-left));
+    }
+    @keyframes bgmove{ 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+
+    .ticket-shell{ width:min(920px, 96%); margin-inline:auto; }
+    .ticket-card{
+      background:var(--paper); border-radius:20px; box-shadow:0 24px 48px rgba(2,6,23,.18);
+      border:1px solid rgba(255,255,255,.4); padding:clamp(18px, 3vw, 28px);
+    }
+    .ticket-paper{
+      border:2px dashed var(--paper-line); border-radius:16px;
+      padding:clamp(18px, 3vw, 26px); position:relative; background:#fff;
+    }
+
+    /* CABECERA: grid 3 columnas (logo - centro - logo) */
+    .ticket-head{
+      display:grid;
+      grid-template-columns: auto 1fr auto;
+      grid-template-areas:
+        "logoL center logoR";
+      align-items:center; gap:12px; margin-bottom:10px;
+    }
+    .ticket-logo{
+      grid-area:auto;
+      width:140px; max-width:40vw; border-radius:15px; padding:6px; object-fit:contain;
+      background:#fff; border:1px solid #eef2ff; box-shadow:0 6px 16px rgba(6,182,212,.22);
+    }
+    .logo-left{ grid-area:logoL; }
+    .logo-right{ grid-area:logoR; }
+    .center{ grid-area:center; min-width:0; }
+
+    .ticket-title{
+      font-weight:900; letter-spacing:.3px; color:var(--fucsia);
+      font-size:clamp(18px, 2.4vw, 22px); margin:0;
+      line-height:1.15; overflow-wrap:anywhere;
+    }
+    .folio{
+      display:inline-flex; align-items:center; gap:8px; background:var(--chip-bg); color:var(--chip-ink);
+      font-weight:800; padding:6px 10px; border-radius:999px; border:1px solid #bae6fd;
+      margin-top:6px; font-size:.95rem; max-width:100%; white-space:normal; line-height:1.1;
+    }
+
+    .rows{ margin-top:10px; border-top:1px solid var(--paper-line); padding-top:10px; }
+    .row{ display:flex; gap:12px; align-items:baseline; padding:8px 0; border-bottom:1px dashed #eef2ff; }
+    .row:last-child{ border-bottom:0; }
+    .label{ min-width:128px; color:var(--muted); font-weight:700; }
+    .value{ font-weight:700; overflow-wrap:anywhere; word-break:break-word; line-height:1.25; }
+
+    .note{ margin-top:12px; background:#f8fafc; border:1px dashed #e2e8f0; color:#0f172a; padding:12px 14px; border-radius:12px; font-size:.95rem; }
+    .actions{ display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-start; margin-top:16px; }
+    .btn{ appearance:none; border:0; cursor:pointer; border-radius:12px; padding:10px 14px; font-weight:800; font-size:.95rem; display:inline-flex; align-items:center; gap:8px; text-decoration:none; }
+    .btn-print{ background:var(--turquesa); color:#fff; }
+    .btn-print:hover{ filter:brightness(1.05); }
+    .btn-link{ background:#fff; color:#0b1220; border:1px solid #e5e7eb; }
+    .muted{ color:var(--muted); font-weight:600; margin-top:10px; }
+
+    /* MÓVIL */
+    @media (max-width: 600px){
+      body{
+        padding:
+          max(12px, env(safe-area-inset-top))
+          max(12px, env(safe-area-inset-right))
+          max(12px, env(safe-area-inset-bottom))
+          max(12px, env(safe-area-inset-left));
+      }
+      .ticket-shell{ width:100%; }
+      .ticket-card{ padding:14px; border-radius:16px; box-shadow:0 14px 28px rgba(2,6,23,.16); }
+      .ticket-paper{ padding:14px; border-radius:14px; }
+
+      /* cabecera: logos más contenidos y folio pasa debajo del título */
+      .ticket-logo{ width:96px; max-width:30vw; }
+      .ticket-head{
+        grid-template-columns: auto 1fr auto;
+        gap:10px;
+      }
+      .ticket-title{ font-size:clamp(17px, 5vw, 20px); }
+      .folio{ display:block; margin-top:6px; }
+
+      .row{ display:grid; grid-template-columns:1fr; gap:4px; padding:10px 0; }
+      .label{ min-width:0; font-size:.9rem; }
+      .value{ font-size:1rem; }
+      .actions .btn{ flex:1 1 100%; justify-content:center; padding:12px; font-size:1rem; }
+    }
+
+    /* IMPRESIÓN */
+    @media print{
+      html,body{ background:#fff !important; animation:none !important; }
+      body{ padding:0 !important; }
+      .ticket-shell{ width:100%; padding:0; margin:0; }
+      .ticket-card{ box-shadow:none; border:0; padding:0; }
+      .ticket-paper{ border-color:#cbd5e1; }
+      .actions, .muted{ display:none !important; }
+      @page{ size:A4; margin:14mm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="ticket-shell">
+    <div class="ticket-card">
+      <div class="ticket-paper">
+        <div class="ticket-head">
+          <img class="ticket-logo logo-left" src="./logo-agencia.png" alt="Agencia">
+          <div class="center">
+            <h2 id="tTitle" class="ticket-title">MUCH · Premio</h2>
+            <div id="tFolio" class="folio">Folio: </div>
+          </div>
+          <img class="ticket-logo logo-right" src="./logo-much.png" alt="MUCH">
+        </div>
+
+        <div class="rows">
+          <div class="row"><div class="label">Beneficiario:</div><div id="tNombre" class="value">—</div></div>
+          <div class="row"><div class="label">Acceso:</div><div id="tPremio" class="value">—</div></div>
+          <div class="row"><div class="label">Validez:</div><div id="tFecha" class="value">—</div></div>
+          <div class="row"><div class="label">Ubicación:</div><div id="tLugar" class="value">MUCH</div></div>
+          <div class="row"><div class="label">Correo:</div><div id="tCorreo" class="value">—</div></div>
+          <div class="row"><div class="label">Teléfono:</div><div id="tTel" class="value">—</div></div>
+        </div>
+
+        <div class="note">
+          Presenta este boleto en taquilla. Sujeto a disponibilidad y horarios del museo.
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-print" onclick="window.print()">🖨️ Imprimir Boleto</button>
+          <a class="btn btn-link" href="index.html">↩️ Volver al inicio</a>
+        </div>
+
+        <div class="muted">Sugerencia: guarda o imprime este boleto. El folio es único.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    const qs = new URLSearchParams(location.search);
+
+    let prizeData = null;
+    try{
+      const raw = localStorage.getItem('much_quiz_prize');
+      if(raw) prizeData = JSON.parse(raw);
+    }catch(_){}
+
+    const nombreQS  = qs.get('nombre')   || '';
+    const correoQS  = qs.get('correo')   || '';
+    const telQS     = qs.get('telefono') || '';
+    const premioQS  = qs.get('premio')   || '';
+    const folioQS   = qs.get('folio')    || '';
+    const lugarQS   = qs.get('lugar')    || '';
+
+    const hoy = new Date();
+    const fin = new Date(hoy); fin.setDate(hoy.getDate() + 7);
+    const fmt = new Intl.DateTimeFormat('es-MX', { dateStyle: 'long' });
+    const fechaHoy = fmt.format(hoy);
+    const fechaFin = fmt.format(fin);
+
+    const nombre = nombreQS || '—';
+    const correo = correoQS || '—';
+    const tel    = telQS    || '—';
+    const premio = (prizeData?.label) || premioQS || 'Entrada general';
+    const folio  = (prizeData?.folio) || folioQS  || ('MUCH-' + Math.random().toString(36).substring(2,8).toUpperCase());
+    const lugar  = (prizeData?.lugar) || lugarQS  || 'MUCH';
+    const title  = (prizeData?.title) || 'MUCH · Premio';
+
+    const el = (id)=> document.getElementById(id);
+    el('tTitle').textContent  = title;
+    el('tFolio').textContent  = 'Folio: ' + folio;
+    el('tNombre').textContent = nombre;
+    el('tPremio').textContent = premio;
+    el('tFecha').textContent  = `Del ${fechaHoy} al ${fechaFin} (válido 7 días)`;
+    el('tLugar').textContent  = lugar;
+    el('tCorreo').textContent = correo;
+    el('tTel').textContent    = tel;
+  })();
+  </script>
+</body>
+</html>

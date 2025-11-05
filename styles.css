@@ -1,0 +1,125 @@
+/* ====== ====== */
+:root{
+
+   --bg-image-url: url("Fondo-Sustent.png");
+  --bg-image-opacity: .10;   /* 0 = invisible, 1 = muy fuerte */
+
+  /* Verdes (bosque) */
+  --verde-50:#7563ea; --verde-100:#4ceb54; --verde-200:#59d6ea;
+  --verde-300:#08f05d; --verde-400:#4ade80; --verde-500:#22c55e;
+  --verde-600:#16a34a; --verde-700:#15803d;
+
+  /* Azules (agua/energía limpia) */
+  --azul-50:#eff6ff; --azul-100:#dbeafe; --azul-200:#bfdbfe;
+  --azul-300:#93c5fd; --azul-400:#60a5fa; --azul-500:#3b82f6;
+  --azul-600:#65e4f2; --azul-700:#839de6;
+
+  /* Grises utilitarios */
+  --gris-100:#f3f4f6; --gris-200:#e5e7eb; --gris-300:#d1d5db;
+  --gris-400:#9ca3af; --gris-500:#6b7280; --gris-600:#4b5563; --gris-700:#374151;
+
+  /* Identidad */
+  --verde: var(--verde-500);
+  --azul:  var(--azul-500);
+
+  /* Pills / Badges */
+  --pill-bg: color-mix(in srgb, var(--verde) 12%, white);
+  --pill-tx: var(--verde-700);
+
+  /* Tarjetas y sombras */
+  --card-bg:#fff;
+  --card-br:24px;
+  --shadow-soft: 0 10px 30px rgba(22,163,74,.12);
+  --shadow-hover: 0 16px 36px rgba(22,163,74,.18);
+}
+
+
+/* ====== Fondo animado (también para el quiz) ====== */
+body{
+  margin:0;
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  min-height:100vh;
+  background: linear-gradient(135deg, #0ea5b9, #ec4899, #38bdf8, #f472b6);
+  background-size: 400% 400%;
+  animation: gradientMove 25s ease infinite;
+  overflow-x:hidden;
+}
+@keyframes gradientMove{
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.hidden{ display:none !important; }
+
+/* ====== Logo que también usa el quiz ====== */
+.logo__img{
+  height:90px; border-radius:16px; margin-bottom:18px; padding:6px;
+  background: rgba(255,255,255,.95);
+  border:1px solid color-mix(in srgb, var(--turquesa) 22%, white);
+  box-shadow: 0 10px 26px rgba(6,182,212,.25);
+  object-fit: contain;
+}
+.logo__img.small{ height:56px; margin-bottom:0; }
+
+/* ====== Contenedor del QUIZ ====== */
+#quizShell{
+  min-height:100vh;
+  display:flex; align-items:center; justify-content:center;
+  padding: 24px 16px;
+  box-sizing:border-box;
+}
+
+/* Tarjeta del quiz */
+.quiz-card{
+  width:min(760px, 96%);
+  background:var(--card-bg);
+  border-radius:var(--card-br);
+  box-shadow:var(--shadow-soft);
+  padding:16px 16px 18px;
+  border:1px solid color-mix(in srgb, var(--turquesa) 8%, #fff);
+  position:relative;
+}
+.quiz-card::before{
+  content:""; position:absolute; inset:auto 0 0 0; height:6px;
+  background:linear-gradient(90deg, var(--turquesa), var(--fucsia));
+  border-bottom-left-radius: var(--card-br);
+  border-bottom-right-radius: var(--card-br);
+}
+
+/* Chips, textos y elementos del quiz */
+.pill{
+  background: color-mix(in srgb, var(--turquesa) 12%, white);
+  color: var(--turquesa-700); font-weight: 800; border-radius: 999px;
+  padding: .45rem .9rem; border: 1px solid color-mix(in srgb, var(--turquesa) 18%, white);
+}
+.tiny{ font-size:.92rem; color: var(--gris-600); }
+
+.progress{ height:6px; background:#eef2ff; border-radius:999px; }
+.progress__bar{ background:linear-gradient(90deg,var(--turquesa) 0%,var(--fucsia) 100%); box-shadow:0 0 0 2px #fff inset; }
+
+.question-card{
+  background:#fff; border:1px solid var(--gris-200); border-radius:14px; padding:14px;
+  box-shadow:0 8px 24px rgba(6,182,212,.08);
+}
+#qText{ font-size:1.05rem; font-weight:700; margin:0 0 4px; }
+#qDesc{ font-size:.9rem; color:var(--gris-600); }
+
+.option-btn{
+  border:2px solid transparent; text-align:left; padding:10px 12px; border-radius:12px; background:#fff;
+  transition: transform .08s ease, box-shadow .15s ease, border-color .15s ease, background .15s ease;
+  box-shadow:0 4px 12px rgba(2,6,23,.05); width:100%; font-size:.95rem; min-height:44px;
+}
+.option-btn:hover{
+  transform:translateY(-1px); box-shadow:var(--shadow-hover);
+  border-color:color-mix(in srgb, var(--fucsia) 55%, var(--turquesa) 45%);
+  background:linear-gradient(0deg,rgba(6,182,212,.05),rgba(217,70,239,.05));
+}
+.option-btn:focus-visible{ outline:none; box-shadow:0 0 0 4px color-mix(in srgb, var(--turquesa) 25%, white); border-color:var(--turquesa); }
+.option-btn--correct{ border-color:var(--turquesa)!important; background:color-mix(in srgb,var(--turquesa) 12%,white)!important; }
+.option-btn--incorrect{ border-color:var(--fucsia)!important; background:color-mix(in srgb,var(--fucsia) 10%,white)!important; }
+.option-btn:disabled{ opacity:.95; cursor:not-allowed; }
+.emoji{ font-size:14px; width:20px; display:inline-flex; justify-content:center; align-items:center; margin-right:6px; }
+
+/* Confeti canvas */
+.confetti-canvas{ position: fixed; inset: 0; pointer-events: none; z-index: 9999; }
