@@ -36,28 +36,37 @@
   }
 
   /* ===== LOGOS (base) ===== */
-  .logo-esquina{
-    position:absolute;
-    /* altura común adaptable: cambia en 1 solo lugar */
-    --logo-h: clamp(56px, 12vw, 84px);
-    height: var(--logo-h);
-    width:auto;
-    top: calc(-0.9 * var(--logo-h)); /* sube proporcional */
-    border-radius:12px;
-    background:#fff;
-    padding:8px 12px;
-    box-shadow:0 6px 14px rgba(0,0,0,.25);
-  }
-  .logo-izq-abs{ left:20px; }
-  .logo-der-abs{ right:20px; }
+ .logo-esquina{
+  position:absolute;
+  /* tamaño base (si no se sobreescribe) */
+  --logo-h: clamp(56px, 12vw, 84px);
+  /* cuánto se levantan respecto a su propio alto */
+  --raise: 1.25;                 /* <- súbelo si quieres mayor separación global */
+  height: var(--logo-h);
+  width:auto;
+  top: calc(-1 * var(--raise) * var(--logo-h));  /* sube proporcional */
+  border-radius:12px;
+  background:#fff;
+  padding:8px 12px;
+  box-shadow:0 6px 14px rgba(0,0,0,.25);
+}
 
-  /* ==== PERSONALIZACIONES OPCIONALES ====
-     Si quieres que SOLO el derecho sea más chico/grande,
-     descomenta UNA de estas líneas:
-  */
-  /* .logo-der-abs{ --logo-h: clamp(48px, 10vw, 72px); }  */  /* un poco más chico */
-  /* .logo-der-abs{ --logo-h: 60px; } */                     /* fijo a 60px */
+/* IZQUIERDO: tamaño fijo 43px y un poco más arriba */
+.logo-izq-abs{
+  left:20px;
+  --logo-h: 43px;    /* tamaño que pediste */
+  --raise: 1.40;     /* súbelo sin tocar el derecho */
+}
 
+/* DERECHO: tamaño fijo 44px y mismo margen superior */
+.logo-der-abs{
+  right:20px;
+  --logo-h: 44px;    /* tamaño que pediste */
+  --raise: 1.40;     /* igual separación que el izquierdo */
+  background:#f6f6f6;
+}
+
+  
   /* Logo MUCH */
   .logo-much{
     display:block; margin:0 auto clamp(16px, 4vw, 24px);
@@ -94,3 +103,4 @@
   </main>
 </body>
 </html>
+
