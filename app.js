@@ -41,6 +41,44 @@ async function getAnySalaId() {
   return null; // si no hay, no tronamos
 }
 
+/** 🔹 NUEVO:
+ * Obtiene el id de la sala **real** para esta instancia (SALA="energia"),
+ * buscando primero por slug y luego por nombre. Si no encuentra nada,
+ * usa getAnySalaId() como último recurso.
+ */
+async function getSalaIdForCurrentSala() {
+  await initSupabase();
+  const slug = (SALA || '').toLowerCase();
+
+  // 1) Buscar por slug exacto (columna 'slug' en tabla salas)
+  let { data, error } = await supabase
+    .from('salas')
+    .select('id, nombre, slug')
+    .ilike('slug', slug)   // ej. 'energia'
+    .limit(1);
+
+  if (!error && data && data.length) {
+    console.log('[QUIZ] Sala encontrada por slug:', data[0]);
+    return data[0].id;
+  }
+
+  // 2) Buscar por nombre que contenga la palabra SALA (ej. "Sala Energía")
+  ({ data, error } = await supabase
+    .from('salas')
+    .select('id, nombre, slug')
+    .ilike('nombre', `%${SALA}%`)
+    .limit(1));
+
+  if (!error && data && data.length) {
+    console.log('[QUIZ] Sala encontrada por nombre:', data[0]);
+    return data[0].id;
+  }
+
+  // 3) Último recurso para no romper nada
+  console.warn('[QUIZ] No se encontró sala específica para', SALA, '→ usando getAnySalaId()');
+  return await getAnySalaId();
+}
+
 // Garantiza un participante_id (usa existente o crea vacío)
 async function ensureParticipanteId() {
   await initSupabase();
@@ -79,7 +117,9 @@ async function ensureParticipanteId() {
 async function startQuizInDB() {
   try {
     await initSupabase();
-    const sala_id = await getAnySalaId();
+
+    // 🔁 AHORA usamos la sala real para esta instancia (Energía)
+    const sala_id = await getSalaIdForCurrentSala();
     const participante_id = await ensureParticipanteId();
 
     const payload = {
@@ -99,6 +139,7 @@ async function startQuizInDB() {
       console.warn('No se pudo crear quiz:', error.message); 
       return null; 
     }
+    console.log('[QUIZ] Quiz creado para sala_id =', sala_id, '→ id quiz =', data.id);
     sessionStorage.setItem('much_current_quiz_id', data.id);
     return data.id;
   } catch (e) {
@@ -558,3 +599,4 @@ document.addEventListener('DOMContentLoaded', ()=>{
     start();
   }
 });
+
