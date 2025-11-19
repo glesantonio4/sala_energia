@@ -24,7 +24,6 @@
       padding:24px 22px 26px; width:100%; max-width:520px; border:1px solid var(--gris-300);
     }
 
-    /* ——— Logo responsive ——— */
     .logo-wrap{ display:flex; justify-content:center; margin-bottom:10px; }
     .brand-logo{
       width: clamp(120px, 42vw, 220px);
@@ -34,11 +33,6 @@
       image-rendering:-webkit-optimize-contrast;
       -ms-interpolation-mode: bicubic;
       filter: drop-shadow(0 2px 8px rgba(0,0,0,.35));
-    }
-    .brand-logo.badge{
-      background:#fff;
-      border-radius:12px;
-      padding:6px 10px;
     }
 
     h2{ text-align:center; margin:8px 0 14px; color:var(--fucsia); line-height:1.2; }
@@ -72,16 +66,14 @@
 </head>
 <body>
   <div class="registro-container">
-    <!-- Logo -->
     <div class="logo-wrap">
       <img src="./logo-much.png" alt="MUCH · Museo de Ciencia y Tecnología" class="brand-logo">
     </div>
 
     <h2>Regístrate para reclamar tu premio 🐆</h2>
-    <p class="lead">Gracias por Visitar el MUCH</p>
+    <p class="lead">Gracias por visitar el MUCH</p>
 
     <form id="registroForm" autocomplete="off" novalidate>
-      <!-- Nombre -->
       <div class="form-group">
         <label for="nombre">Nombre completo</label>
         <input
@@ -94,7 +86,6 @@
         <div class="error-msg" id="err-nombre"></div>
       </div>
 
-      <!-- Correo -->
       <div class="form-group">
         <label for="correo">Correo electrónico</label>
         <input
@@ -106,7 +97,6 @@
         <div class="error-msg" id="err-correo"></div>
       </div>
 
-      <!-- Teléfono -->
       <div class="form-group">
         <label for="telefono">Número de teléfono</label>
         <input
@@ -125,11 +115,12 @@
 
   <script>
     // ---------- Supabase Client (BASE MUCH) ----------
-    const SUPABASE_URL = 'https://TU-PROYECTO.supabase.co';     // <-- CAMBIA ESTO
-    const SUPABASE_ANON_KEY = 'TU-ANON-KEY-PUBLICA';            // <-- CAMBIA ESTO
+    const SUPABASE_URL = 'https://qwgaeorsymfispmtsbut.supabase.co';
+    const SUPABASE_ANON_KEY =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3Z2Flb3JzeW1maXNwbXRzYnV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzODcyODUsImV4cCI6MjA3Nzk2MzI4NX0.FThZIIpz3daC9u8QaKyRTpxUeW0v4QHs5sHX2s1U1eo';
 
     let supabaseClient = null;
-    if (window.supabase && SUPABASE_URL !== 'https://TU-PROYECTO.supabase.co') {
+    if (window.supabase) {
       const { createClient } = window.supabase;
       supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     }
@@ -138,14 +129,22 @@
     const salaSlug = qs.get('sala') || 'energia';
 
     // ---------- Validadores ----------
-    const reNombre = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+(?:[ \t]+[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'.-]+){1,}$/; // ≥2 palabras
+    const reNombre = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+(?:[ \t]+[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'.-]+){1,}$/;
     const reEmail  = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
     const rePhone  = /^\d{10}$/;
     const disposableDomains = ["10minutemail.com","guerrillamail.com","tempmail.com","yopmail.com","mailinator.com","trashmail.com","sharklasers.com"];
     const $ = (id) => document.getElementById(id);
 
-    function setError(inputEl, errEl, msg){ inputEl.classList.add('is-invalid'); errEl.textContent = msg; errEl.style.display = 'block'; }
-    function clearError(inputEl, errEl){ inputEl.classList.remove('is-invalid'); errEl.textContent = ''; errEl.style.display = 'none'; }
+    function setError(inputEl, errEl, msg){
+      inputEl.classList.add('is-invalid');
+      errEl.textContent = msg;
+      errEl.style.display = 'block';
+    }
+    function clearError(inputEl, errEl){
+      inputEl.classList.remove('is-invalid');
+      errEl.textContent = '';
+      errEl.style.display = 'none';
+    }
 
     function validateNombre(raw){
       const nombre = raw.trim().replace(/\s+/g,' ');
@@ -167,59 +166,41 @@
     }
 
     // ---------- Guardar en Supabase ----------
+    function dateToISODate(d){
+      return d.toISOString().slice(0,10); // YYYY-MM-DD
+    }
+
     async function guardarEnSupabase(nombre, correo, telefono, prizeData){
       if (!supabaseClient) return;
 
-      const ahoraISO = new Date().toISOString();
-
-      // 1) participante
-      const participantePayload = {
-        nombre,
-        correo,
-        telefono,
-        sala_slug: salaSlug,
-        creado_en: ahoraISO
-      };
-      let participanteId = null;
+      // 1) Guardar participante (coincide con columnas reales)
       try{
-        const { data, error } = await supabaseClient
-          .from('participantes')    // <-- AJUSTA nombre de tabla/columnas
-          .insert(participantePayload)
-          .select('id')
-          .single();
-
-        if (error) {
-          console.error('Error al guardar participante:', error);
-        } else {
-          participanteId = data?.id || null;
+        const { error: pError } = await supabaseClient
+          .from('participantes')
+          .insert({ nombre, correo, telefono });
+        if (pError) {
+          console.error('Error al guardar participante:', pError);
         }
       }catch(err){
         console.error('Error inesperado participante:', err);
       }
 
-      // 2) boleto
+      // 2) Guardar boleto (coincide con columnas reales)
       const hoy = new Date();
       const fin = new Date(hoy); fin.setDate(hoy.getDate() + 7);
 
       const boletoPayload = {
-        folio: prizeData.folio,
-        premio_label: prizeData.label,
-        premio_lugar: prizeData.lugar,
-        sala_slug: salaSlug,
-        nombre,
-        correo,
-        telefono,
-        fecha_inicio: hoy.toISOString(),
-        fecha_fin: fin.toISOString(),
-        participante_id: participanteId,
-        creado_en: ahoraISO
+        desde: dateToISODate(hoy),
+        valido_hasta: dateToISODate(fin),
+        participante_nombre: nombre,
+        premio_nombre: prizeData.label || 'Entrada al Museo MUCH'
       };
 
       try{
-        const { error } = await supabaseClient
-          .from('boletos')         // <-- AJUSTA nombre de tabla/columnas
+        const { error: bError } = await supabaseClient
+          .from('boletos')
           .insert(boletoPayload);
-        if (error) console.error('Error al guardar boleto:', error);
+        if (bError) console.error('Error al guardar boleto:', bError);
       }catch(err){
         console.error('Error inesperado boleto:', err);
       }
@@ -238,7 +219,6 @@
       const correo   = $('correo').value;
       const telefono = $('telefono').value;
 
-      // Validar campos
       let ok = true;
       const nErr = validateNombre(nombre);  if (nErr){ ok=false; setError($('nombre'), $('err-nombre'), nErr); } else { clearError($('nombre'), $('err-nombre')); }
       const cErr = validateEmail(correo);   if (cErr){ ok=false; setError($('correo'), $('err-correo'), cErr); } else { clearError($('correo'), $('err-correo')); }
@@ -250,20 +230,20 @@
         return;
       }
 
-      // Intentar leer el premio que dejó el juego (much_quiz_prize)
+      // Premio generado por el quiz (much_quiz_prize)
       let prizeData = null;
       try{
         const raw = localStorage.getItem('much_quiz_prize');
         if (raw) prizeData = JSON.parse(raw);
       }catch(_){}
 
-      // Plan B si no hay prizeData
+      // Plan B si no hay nada en localStorage
       if (!prizeData){
         const folio = 'MUCH-' + Math.random().toString(36).substring(2,8).toUpperCase();
         prizeData = {
           title: 'MUCH · Premio',
-          label: 'Entrada al Planetario MUCH',
-          lugar: 'Planetario MUCH',
+          label: 'Entrada al Museo MUCH',
+          lugar: 'Museo Chiapas (MUCH)',
           folio: folio,
           date: new Date().toISOString(),
           emoji: '🎁',
@@ -272,7 +252,7 @@
         try { localStorage.setItem('much_quiz_prize', JSON.stringify(prizeData)); } catch(_){}
       }
 
-      // Guardar en Supabase (participante + boleto)
+      // Guardar en BD
       try{
         await guardarEnSupabase(
           nombre.trim().replace(/\s+/g,' '),
@@ -284,7 +264,7 @@
         console.error('Error guardando en Supabase:', err);
       }
 
-      // Build params para boleto.html
+      // Parámetros para boleto.html
       const params = new URLSearchParams({
         nombre:   nombre.trim().replace(/\s+/g,' '),
         correo:   correo.trim().toLowerCase(),
@@ -295,13 +275,13 @@
         sala:     salaSlug
       });
 
-      // Evitar doble canje
+      // Evitar doble canje desde el mismo dispositivo
       try { localStorage.removeItem('much_quiz_prize'); } catch(_){}
 
       window.location.href = 'boleto.html?' + params.toString();
     });
 
-    // Limpieza de errores
+    // Validación en vivo
     ['nombre','correo','telefono'].forEach(id=>{
       $(id).addEventListener('input', () => {
         const map = {
