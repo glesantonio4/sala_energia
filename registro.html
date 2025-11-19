@@ -113,200 +113,201 @@
     </form>
   </div>
 
-  <script>
-    // ---------- Supabase Client (BASE MUCH) ----------
-    const SUPABASE_URL = 'https://qwgaeorsymfispmtsbut.supabase.co';
-    const SUPABASE_ANON_KEY =
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3Z2Flb3JzeW1maXNwbXRzYnV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzODcyODUsImV4cCI6MjA3Nzk2MzI4NX0.FThZIIpz3daC9u8QaKyRTpxUeW0v4QHs5sHX2s1U1eo';
+ <script>
+  // ---------- Supabase Client (BASE MUCH) ----------
+  const SUPABASE_URL = 'https://qwgaeorsymfispmtsbut.supabase.co';
+  const SUPABASE_ANON_KEY =
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3Z2Flb3JzeW1maXNwbXRzYnV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzODcyODUsImV4cCI6MjA3Nzk2MzI4NX0.FThZIIpz3daC9u8QaKyRTpxUeW0v4QHs5sHX2s1U1eo';
 
-    let supabaseClient = null;
-    if (window.supabase && typeof window.supabase.createClient === 'function') {
-      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      console.log('[REGISTRO] Supabase client inicializado');
-    } else {
-      console.error('[REGISTRO] Supabase JS no disponible:', window.supabase);
+  let supabaseClient = null;
+  if (window.supabase && typeof window.supabase.createClient === 'function') {
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log('[REGISTRO] Supabase client inicializado');
+  } else {
+    console.error('[REGISTRO] Supabase JS no disponible:', window.supabase);
+  }
+
+  const qs = new URLSearchParams(location.search);
+  const salaSlug = qs.get('sala') || 'energia';
+
+  // ---------- Validadores ----------
+  const reNombre = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+(?:[ \t]+[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'.-]+){1,}$/;
+  const reEmail  = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
+  const rePhone  = /^\d{10}$/;
+  const disposableDomains = ["10minutemail.com","guerrillamail.com","tempmail.com","yopmail.com","mailinator.com","trashmail.com","sharklasers.com"];
+  const $ = (id) => document.getElementById(id);
+
+  function setError(inputEl, errEl, msg){
+    inputEl.classList.add('is-invalid');
+    errEl.textContent = msg;
+    errEl.style.display = 'block';
+  }
+  function clearError(inputEl, errEl){
+    inputEl.classList.remove('is-invalid');
+    errEl.textContent = '';
+    errEl.style.display = 'none';
+  }
+
+  function validateNombre(raw){
+    const nombre = raw.trim().replace(/\s+/g,' ');
+    if (nombre.length < 6) return "Es muy corto. Escribe tu nombre completo.";
+    if (!reNombre.test(nombre)) return "Escribe al menos nombre y apellido (solo letras y espacios).";
+    return null;
+  }
+  function validateEmail(raw){
+    const email = raw.trim().toLowerCase();
+    if (!reEmail.test(email)) return "Correo no válido.";
+    const domain = email.split('@')[1] || '';
+    if (disposableDomains.includes(domain)) return "Este dominio de correo no es permitido.";
+    return null;
+  }
+  function validatePhone(raw){
+    const tel = raw.trim();
+    if (!rePhone.test(tel)) return "El teléfono debe tener 10 dígitos.";
+    return null;
+  }
+
+  // ---------- Guardar en Supabase ----------
+  async function guardarEnSupabase(nombre, correo, telefono, prizeData){
+    if (!supabaseClient) {
+      console.warn('[REGISTRO] supabaseClient es null; no se guarda en BD');
+      return;
     }
 
-    const qs = new URLSearchParams(location.search);
-    const salaSlug = qs.get('sala') || 'energia';
+    // 1) UPSERT de participante por correo (evita error 409)
+    let participanteNombre = nombre;
+    try{
+      const { data, error } = await supabaseClient
+        .from('participantes')
+        .upsert(
+          { nombre, correo, telefono },
+          { onConflict: 'correo' }         // usa la unique key en correo si la tienes
+        )
+        .select('nombre')
+        .single();
 
-    // ---------- Validadores ----------
-    const reNombre = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+(?:[ \t]+[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'.-]+){1,}$/;
-    const reEmail  = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
-    const rePhone  = /^\d{10}$/;
-    const disposableDomains = ["10minutemail.com","guerrillamail.com","tempmail.com","yopmail.com","mailinator.com","trashmail.com","sharklasers.com"];
-    const $ = (id) => document.getElementById(id);
-
-    function setError(inputEl, errEl, msg){
-      inputEl.classList.add('is-invalid');
-      errEl.textContent = msg;
-      errEl.style.display = 'block';
-    }
-    function clearError(inputEl, errEl){
-      inputEl.classList.remove('is-invalid');
-      errEl.textContent = '';
-      errEl.style.display = 'none';
-    }
-
-    function validateNombre(raw){
-      const nombre = raw.trim().replace(/\s+/g,' ');
-      if (nombre.length < 6) return "Es muy corto. Escribe tu nombre completo.";
-      if (!reNombre.test(nombre)) return "Escribe al menos nombre y apellido (solo letras y espacios).";
-      return null;
-    }
-    function validateEmail(raw){
-      const email = raw.trim().toLowerCase();
-      if (!reEmail.test(email)) return "Correo no válido.";
-      const domain = email.split('@')[1] || '';
-      if (disposableDomains.includes(domain)) return "Este dominio de correo no es permitido.";
-      return null;
-    }
-    function validatePhone(raw){
-      const tel = raw.trim();
-      if (!rePhone.test(tel)) return "El teléfono debe tener 10 dígitos.";
-      return null;
-    }
-
-    // ---------- Guardar en Supabase ----------
-    function dateToISODate(d){
-      return d.toISOString().slice(0,10); // YYYY-MM-DD
-    }
-
-    async function guardarEnSupabase(nombre, correo, telefono, prizeData){
-      if (!supabaseClient) {
-        console.warn('[REGISTRO] supabaseClient es null; no se guarda en BD');
-        return;
+      if (error) {
+        console.error('Error al guardar participante:', error.message, error.details, error);
+      } else {
+        console.log('[REGISTRO] Participante insertado/actualizado:', data);
+        if (data?.nombre) participanteNombre = data.nombre;
       }
+    }catch(err){
+      console.error('Error inesperado participante:', err);
+    }
 
-      // 1) Guardar participante (nombre/correo/telefono)
-      try{
-        const { error: pError } = await supabaseClient
-          .from('participantes')
-          .insert({ nombre, correo, telefono });
+    // 2) Insert de boleto
+    // Usamos solo columnas que sabemos que existen: participante_nombre, premio_nombre.
+    // (created_at lo rellena la BD con default; desde/valido_hasta también si tienen default)
+    const boletoPayload = {
+      participante_nombre: participanteNombre,
+      premio_nombre: prizeData.label || 'Entrada al Museo MUCH'
+    };
 
-        if (pError) {
-          console.error('Error al guardar participante:', pError);
-        } else {
-          console.log('[REGISTRO] Participante insertado correctamente');
-        }
-      }catch(err){
-        console.error('Error inesperado participante:', err);
+    try{
+      const { data, error } = await supabaseClient
+        .from('boletos')
+        .insert(boletoPayload)
+        .select('id')
+        .single();
+
+      if (error) {
+        console.error('Error al guardar boleto:', error.message, error.details, error);
+      } else {
+        console.log('[REGISTRO] Boleto insertado OK, id =', data.id);
       }
+    }catch(err){
+      console.error('Error inesperado boleto:', err);
+    }
+  }
 
-      // 2) Guardar boleto (usa columnas: desde, valido_hasta, participante_nombre, premio_nombre)
-      const hoy = new Date();
-      const fin = new Date(hoy); fin.setDate(hoy.getDate() + 7);
+  // ---------- Submit ----------
+  let submitting = false;
 
-      const boletoPayload = {
-        desde: dateToISODate(hoy),
-        valido_hasta: dateToISODate(fin),
-        participante_nombre: nombre,
-        premio_nombre: prizeData.label || 'Entrada al Museo MUCH'
+  $('registroForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    if (submitting) return;
+    submitting = true;
+    $('submitBtn').setAttribute('disabled','disabled');
+
+    const nombre   = $('nombre').value;
+    const correo   = $('correo').value;
+    const telefono = $('telefono').value;
+
+    let ok = true;
+    const nErr = validateNombre(nombre);  if (nErr){ ok=false; setError($('nombre'), $('err-nombre'), nErr); } else { clearError($('nombre'), $('err-nombre')); }
+    const cErr = validateEmail(correo);   if (cErr){ ok=false; setError($('correo'), $('err-correo'), cErr); } else { clearError($('correo'), $('err-correo')); }
+    const tErr = validatePhone(telefono); if (tErr){ ok=false; setError($('telefono'), $('err-telefono'), tErr); } else { clearError($('telefono'), $('err-telefono')); }
+
+    if (!ok){
+      submitting = false;
+      $('submitBtn').removeAttribute('disabled');
+      return;
+    }
+
+    // Premio generado por el quiz (much_quiz_prize)
+    let prizeData = null;
+    try{
+      const raw = localStorage.getItem('much_quiz_prize');
+      if (raw) prizeData = JSON.parse(raw);
+    }catch(_){}
+
+    // Plan B si no hay nada en localStorage
+    if (!prizeData){
+      const folio = 'MUCH-' + Math.random().toString(36).substring(2,8).toUpperCase();
+      prizeData = {
+        title: 'MUCH · Premio',
+        label: 'Entrada al Museo MUCH',
+        lugar: 'Museo Chiapas (MUCH)',
+        folio: folio,
+        date: new Date().toISOString(),
+        emoji: '🎁',
+        sala: salaSlug
       };
-
-      try{
-        const { error: bError } = await supabaseClient
-          .from('boletos')
-          .insert(boletoPayload);
-        if (bError) {
-          console.error('Error al guardar boleto:', bError);
-        } else {
-          console.log('[REGISTRO] Boleto insertado correctamente');
-        }
-      }catch(err){
-        console.error('Error inesperado boleto:', err);
-      }
+      try { localStorage.setItem('much_quiz_prize', JSON.stringify(prizeData)); } catch(_){}
     }
 
-    // ---------- Submit ----------
-    let submitting = false;
+    // Guardar en BD
+    try{
+      await guardarEnSupabase(
+        nombre.trim().replace(/\s+/g,' '),
+        correo.trim().toLowerCase(),
+        telefono.trim(),
+        prizeData
+      );
+    }catch(err){
+      console.error('Error guardando en Supabase:', err);
+    }
 
-    $('registroForm').addEventListener('submit', async function(e){
-      e.preventDefault();
-      if (submitting) return;
-      submitting = true;
-      $('submitBtn').setAttribute('disabled','disabled');
-
-      const nombre   = $('nombre').value;
-      const correo   = $('correo').value;
-      const telefono = $('telefono').value;
-
-      let ok = true;
-      const nErr = validateNombre(nombre);  if (nErr){ ok=false; setError($('nombre'), $('err-nombre'), nErr); } else { clearError($('nombre'), $('err-nombre')); }
-      const cErr = validateEmail(correo);   if (cErr){ ok=false; setError($('correo'), $('err-correo'), cErr); } else { clearError($('correo'), $('err-correo')); }
-      const tErr = validatePhone(telefono); if (tErr){ ok=false; setError($('telefono'), $('err-telefono'), tErr); } else { clearError($('telefono'), $('err-telefono')); }
-
-      if (!ok){
-        submitting = false;
-        $('submitBtn').removeAttribute('disabled');
-        return;
-      }
-
-      // Premio generado por el quiz (much_quiz_prize)
-      let prizeData = null;
-      try{
-        const raw = localStorage.getItem('much_quiz_prize');
-        if (raw) prizeData = JSON.parse(raw);
-      }catch(_){}
-
-      // Plan B si no hay nada en localStorage
-      if (!prizeData){
-        const folio = 'MUCH-' + Math.random().toString(36).substring(2,8).toUpperCase();
-        prizeData = {
-          title: 'MUCH · Premio',
-          label: 'Entrada al Museo MUCH',
-          lugar: 'Museo Chiapas (MUCH)',
-          folio: folio,
-          date: new Date().toISOString(),
-          emoji: '🎁',
-          sala: salaSlug
-        };
-        try { localStorage.setItem('much_quiz_prize', JSON.stringify(prizeData)); } catch(_){}
-      }
-
-      // Guardar en BD
-      try{
-        await guardarEnSupabase(
-          nombre.trim().replace(/\s+/g,' '),
-          correo.trim().toLowerCase(),
-          telefono.trim(),
-          prizeData
-        );
-      }catch(err){
-        console.error('Error guardando en Supabase:', err);
-      }
-
-      // Parámetros para boleto.html
-      const params = new URLSearchParams({
-        nombre:   nombre.trim().replace(/\s+/g,' '),
-        correo:   correo.trim().toLowerCase(),
-        telefono: telefono.trim(),
-        premio:   prizeData.label || '',
-        folio:    prizeData.folio || '',
-        lugar:    prizeData.lugar || '',
-        sala:     salaSlug
-      });
-
-      // Evitar doble canje desde el mismo dispositivo
-      try { localStorage.removeItem('much_quiz_prize'); } catch(_){}
-
-      window.location.href = 'boleto.html?' + params.toString();
+    // Parámetros para boleto.html
+    const params = new URLSearchParams({
+      nombre:   nombre.trim().replace(/\s+/g,' '),
+      correo:   correo.trim().toLowerCase(),
+      telefono: telefono.trim(),
+      premio:   prizeData.label || '',
+      folio:    prizeData.folio || '',
+      lugar:    prizeData.lugar || '',
+      sala:     salaSlug
     });
 
-    // Validación en vivo
-    ['nombre','correo','telefono'].forEach(id=>{
-      $(id).addEventListener('input', () => {
-        const map = {
-          nombre:  [validateNombre, $('err-nombre')],
-          correo:  [validateEmail,  $('err-correo')],
-          telefono:[validatePhone,  $('err-telefono')]
-        };
-        const [fn, errEl] = map[id];
-        const msg = fn($(id).value);
-        if (msg) setError($(id), errEl, msg); else clearError($(id), errEl);
-      });
+    // Evitar doble canje desde el mismo dispositivo
+    try { localStorage.removeItem('much_quiz_prize'); } catch(_){}
+
+    window.location.href = 'boleto.html?' + params.toString();
+  });
+
+  // Validación en vivo
+  ['nombre','correo','telefono'].forEach(id=>{
+    $(id).addEventListener('input', () => {
+      const map = {
+        nombre:  [validateNombre, $('err-nombre')],
+        correo:  [validateEmail,  $('err-correo')],
+        telefono:[validatePhone,  $('err-telefono')]
+      };
+      const [fn, errEl] = map[id];
+      const msg = fn($(id).value);
+      if (msg) setError($(id), errEl, msg); else clearError($(id), errEl);
     });
-  </script>
-</body>
-</html>
+  });
+</script>
 
