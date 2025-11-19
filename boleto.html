@@ -155,8 +155,11 @@
     </div>
   </div>
 
+  <!-- Supabase JS (para leer boleto desde la BD si es posible) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <script>
-  (function(){
+  (async function(){
     const qs = new URLSearchParams(location.search);
 
     let prizeData = null;
@@ -176,13 +179,13 @@
     const hoy = new Date();
     const fin = new Date(hoy); fin.setDate(hoy.getDate() + 7);
     const fmt = new Intl.DateTimeFormat('es-MX', { dateStyle: 'long' });
-    const fechaHoy = fmt.format(hoy);
-    const fechaFin = fmt.format(fin);
+    let fechaHoy = fmt.format(hoy);
+    let fechaFin = fmt.format(fin);
 
     const nombre = nombreQS || '—';
     const correo = correoQS || '—';
     const tel    = telQS    || '—';
-    const premio = (prizeData?.label) || premioQS || 'Entrada general';
+    let premio   = (prizeData?.label) || premioQS || 'Entrada general';
     const folio  = (prizeData?.folio) || folioQS  || ('MUCH-' + Math.random().toString(36).substring(2,8).toUpperCase());
     const lugar  = (prizeData?.lugar) || lugarQS  || 'MUCH';
     const title  = (prizeData?.title) || 'MUCH · Premio';
@@ -196,6 +199,46 @@
     el('tLugar').textContent  = lugar;
     el('tCorreo').textContent = correo;
     el('tTel').textContent    = tel;
+
+    // ===== EXTRA: intentar leer el boleto real desde Supabase y sobrescribir datos =====
+    const SUPABASE_URL = 'https://qwgaeorsymfispmtsbut.supabase.co';
+    const SUPABASE_ANON_KEY =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3Z2Flb3JzeW1maXNwbXRzYnV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzODcyODUsImV4cCI6MjA3Nzk2MzI4NX0.FThZIIpz3daC9u8QaKyRTpxUeW0v4QHs5sHX2s1U1eo';
+
+    if (window.supabase && typeof window.supabase.createClient === 'function' && nombre !== '—') {
+      try{
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Último boleto de este participante
+        const { data, error } = await supabase
+          .from('boletos')
+          .select('participante_nombre,premio_nombre,desde,valido_hasta,created_at')
+          .eq('participante_nombre', nombre)
+          .order('created_at', { ascending:false })
+          .limit(1)
+          .maybeSingle();
+
+        if (error) {
+          console.warn('[BOLETO] No se pudo consultar boleto en BD:', error.message);
+        } else if (data) {
+          // Si hay premio_nombre en BD, lo usamos
+          if (data.premio_nombre) {
+            premio = data.premio_nombre;
+            el('tPremio').textContent = premio;
+          }
+          // Si hay fechas en BD, usamos esas
+          if (data.desde && data.valido_hasta) {
+            const dIni = new Date(data.desde);
+            const dFin = new Date(data.valido_hasta);
+            fechaHoy = fmt.format(dIni);
+            fechaFin = fmt.format(dFin);
+            el('tFecha').textContent = `Del ${fechaHoy} al ${fechaFin}`;
+          }
+        }
+      }catch(e){
+        console.warn('[BOLETO] Error inesperado consultando Supabase:', e);
+      }
+    }
   })();
   </script>
 </body>
