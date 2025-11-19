@@ -6,6 +6,9 @@
   <title>Registro para obtener tu premio</title>
   <link rel="stylesheet" href="styles.css"/>
 
+  <!-- Supabase JS (BASE MUCH) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <style>
     :root{
       --card-bg:#23272f; --card-br:18px; --shadow-soft:0 2px 12px rgba(0,0,0,.12);
@@ -24,16 +27,14 @@
     /* ——— Logo responsive ——— */
     .logo-wrap{ display:flex; justify-content:center; margin-bottom:10px; }
     .brand-logo{
-      /* ancho flexible: chico en móvil, más grande en desktop */
       width: clamp(120px, 42vw, 220px);
       max-width: 70%;
-      height: auto;                 /* mantiene proporción */
+      height: auto;
       display:block;
       image-rendering:-webkit-optimize-contrast;
       -ms-interpolation-mode: bicubic;
       filter: drop-shadow(0 2px 8px rgba(0,0,0,.35));
     }
-    /* Opcional: pon la clase 'badge' si tu logo pierde contraste en fondo oscuro */
     .brand-logo.badge{
       background:#fff;
       border-radius:12px;
@@ -62,7 +63,6 @@
     .submit-btn:active{ transform:scale(.995); }
     .submit-btn[disabled]{ opacity:.6; cursor:not-allowed; }
 
-    /* Ajustes muy pequeños (teléfonos angostos) */
     @media (max-width: 360px){
       .registro-container{ padding:18px 16px 22px; }
       h2{ font-size:1.15rem; }
@@ -74,11 +74,10 @@
   <div class="registro-container">
     <!-- Logo -->
     <div class="logo-wrap">
-      <!-- Si necesitas más contraste, agrega la clase 'badge' abajo -->
       <img src="./logo-much.png" alt="MUCH · Museo de Ciencia y Tecnología" class="brand-logo">
     </div>
 
-    <h2> Regístrate para reclamar tu premio 🐆</h2>
+    <h2>Regístrate para reclamar tu premio 🐆</h2>
     <p class="lead">Gracias por Visitar el MUCH</p>
 
     <form id="registroForm" autocomplete="off" novalidate>
@@ -125,6 +124,19 @@
   </div>
 
   <script>
+    // ---------- Supabase Client (BASE MUCH) ----------
+    const SUPABASE_URL = 'https://TU-PROYECTO.supabase.co';     // <-- CAMBIA ESTO
+    const SUPABASE_ANON_KEY = 'TU-ANON-KEY-PUBLICA';            // <-- CAMBIA ESTO
+
+    let supabaseClient = null;
+    if (window.supabase && SUPABASE_URL !== 'https://TU-PROYECTO.supabase.co') {
+      const { createClient } = window.supabase;
+      supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
+
+    const qs = new URLSearchParams(location.search);
+    const salaSlug = qs.get('sala') || 'energia';
+
     // ---------- Validadores ----------
     const reNombre = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+(?:[ \t]+[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'.-]+){1,}$/; // ≥2 palabras
     const reEmail  = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
@@ -154,10 +166,69 @@
       return null;
     }
 
+    // ---------- Guardar en Supabase ----------
+    async function guardarEnSupabase(nombre, correo, telefono, prizeData){
+      if (!supabaseClient) return;
+
+      const ahoraISO = new Date().toISOString();
+
+      // 1) participante
+      const participantePayload = {
+        nombre,
+        correo,
+        telefono,
+        sala_slug: salaSlug,
+        creado_en: ahoraISO
+      };
+      let participanteId = null;
+      try{
+        const { data, error } = await supabaseClient
+          .from('participantes')    // <-- AJUSTA nombre de tabla/columnas
+          .insert(participantePayload)
+          .select('id')
+          .single();
+
+        if (error) {
+          console.error('Error al guardar participante:', error);
+        } else {
+          participanteId = data?.id || null;
+        }
+      }catch(err){
+        console.error('Error inesperado participante:', err);
+      }
+
+      // 2) boleto
+      const hoy = new Date();
+      const fin = new Date(hoy); fin.setDate(hoy.getDate() + 7);
+
+      const boletoPayload = {
+        folio: prizeData.folio,
+        premio_label: prizeData.label,
+        premio_lugar: prizeData.lugar,
+        sala_slug: salaSlug,
+        nombre,
+        correo,
+        telefono,
+        fecha_inicio: hoy.toISOString(),
+        fecha_fin: fin.toISOString(),
+        participante_id: participanteId,
+        creado_en: ahoraISO
+      };
+
+      try{
+        const { error } = await supabaseClient
+          .from('boletos')         // <-- AJUSTA nombre de tabla/columnas
+          .insert(boletoPayload);
+        if (error) console.error('Error al guardar boleto:', error);
+      }catch(err){
+        console.error('Error inesperado boleto:', err);
+      }
+    }
+
     // ---------- Submit ----------
     let submitting = false;
 
-    $('registroForm').addEventListener('submit', function(e){
+    $('registroForm').addEventListener('submit', async function(e){
       e.preventDefault();
       if (submitting) return;
       submitting = true;
@@ -186,7 +257,7 @@
         if (raw) prizeData = JSON.parse(raw);
       }catch(_){}
 
-      // Plan B
+      // Plan B si no hay prizeData
       if (!prizeData){
         const folio = 'MUCH-' + Math.random().toString(36).substring(2,8).toUpperCase();
         prizeData = {
@@ -195,19 +266,33 @@
           lugar: 'Planetario MUCH',
           folio: folio,
           date: new Date().toISOString(),
-          emoji: '🎁'
+          emoji: '🎁',
+          sala: salaSlug
         };
         try { localStorage.setItem('much_quiz_prize', JSON.stringify(prizeData)); } catch(_){}
       }
 
-      // Build params
+      // Guardar en Supabase (participante + boleto)
+      try{
+        await guardarEnSupabase(
+          nombre.trim().replace(/\s+/g,' '),
+          correo.trim().toLowerCase(),
+          telefono.trim(),
+          prizeData
+        );
+      }catch(err){
+        console.error('Error guardando en Supabase:', err);
+      }
+
+      // Build params para boleto.html
       const params = new URLSearchParams({
         nombre:   nombre.trim().replace(/\s+/g,' '),
         correo:   correo.trim().toLowerCase(),
         telefono: telefono.trim(),
         premio:   prizeData.label || '',
         folio:    prizeData.folio || '',
-        lugar:    prizeData.lugar || ''
+        lugar:    prizeData.lugar || '',
+        sala:     salaSlug
       });
 
       // Evitar doble canje
