@@ -120,9 +120,11 @@
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3Z2Flb3JzeW1maXNwbXRzYnV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzODcyODUsImV4cCI6MjA3Nzk2MzI4NX0.FThZIIpz3daC9u8QaKyRTpxUeW0v4QHs5sHX2s1U1eo';
 
     let supabaseClient = null;
-    if (window.supabase) {
-      const { createClient } = window.supabase;
-      supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    if (window.supabase && typeof window.supabase.createClient === 'function') {
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      console.log('[REGISTRO] Supabase client inicializado');
+    } else {
+      console.error('[REGISTRO] Supabase JS no disponible:', window.supabase);
     }
 
     const qs = new URLSearchParams(location.search);
@@ -171,21 +173,27 @@
     }
 
     async function guardarEnSupabase(nombre, correo, telefono, prizeData){
-      if (!supabaseClient) return;
+      if (!supabaseClient) {
+        console.warn('[REGISTRO] supabaseClient es null; no se guarda en BD');
+        return;
+      }
 
-      // 1) Guardar participante (coincide con columnas reales)
+      // 1) Guardar participante (nombre/correo/telefono)
       try{
         const { error: pError } = await supabaseClient
           .from('participantes')
           .insert({ nombre, correo, telefono });
+
         if (pError) {
           console.error('Error al guardar participante:', pError);
+        } else {
+          console.log('[REGISTRO] Participante insertado correctamente');
         }
       }catch(err){
         console.error('Error inesperado participante:', err);
       }
 
-      // 2) Guardar boleto (coincide con columnas reales)
+      // 2) Guardar boleto (usa columnas: desde, valido_hasta, participante_nombre, premio_nombre)
       const hoy = new Date();
       const fin = new Date(hoy); fin.setDate(hoy.getDate() + 7);
 
@@ -200,7 +208,11 @@
         const { error: bError } = await supabaseClient
           .from('boletos')
           .insert(boletoPayload);
-        if (bError) console.error('Error al guardar boleto:', bError);
+        if (bError) {
+          console.error('Error al guardar boleto:', bError);
+        } else {
+          console.log('[REGISTRO] Boleto insertado correctamente');
+        }
       }catch(err){
         console.error('Error inesperado boleto:', err);
       }
@@ -297,3 +309,4 @@
   </script>
 </body>
 </html>
+
