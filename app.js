@@ -1,6 +1,25 @@
-/* =================== Datos =================== */
+/* =================== Config Sala =================== */
 const params = new URLSearchParams(location.search);
-const SALA = params.get('sala') || 'Exploración';
+// Para la Sala Energía usamos el slug "energia"
+const SALA = params.get('sala') || 'energia';
+
+/* =================== Supabase (BASE MUCH) =================== */
+/**
+ * IMPORTANTE:
+ * 1) Agrega en el HTML donde cargas app.js:
+ *    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+ * 2) Sustituye SUPABASE_URL y SUPABASE_ANON_KEY por los de tu proyecto.
+ */
+const SUPABASE_URL = 'https://TU-PROYECTO.supabase.co';       // <-- CAMBIA ESTO
+const SUPABASE_ANON_KEY = 'TU-ANON-KEY-PUBLICA';               // <-- CAMBIA ESTO
+
+let supabaseClient = null;
+if (window.supabase && SUPABASE_URL !== 'https://TU-PROYECTO.supabase.co') {
+  const { createClient } = window.supabase;
+  supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
+
+/* =================== Datos =================== */
 // Las preguntas se cargan desde `preguntas.json` en lugar de estar embebidas.
 const NUM_QUESTIONS = 6;
 const shuffle = a => a.map(x=>[Math.random(),x]).sort((p,q)=>p[0]-q[0]).map(p=>p[1]);
@@ -69,8 +88,8 @@ class Confetti{
 class PrizeManager{
   constructor(){
     this.PRIZES = [
-      { key:'museo',      title:'MUCH · Museo',      label:'Entrada al Museo MUCH',  lugar:'Museo Chiapas (MUCH)', emoji:'🏛️' },
-      { key:'planetario', title:'MUCH · Planetario', label:'Entrada al Planetario MUCH',lugar:'Planetario MUCH',      emoji:'🔭' },
+      { key:'museo',      title:'MUCH · Museo',      label:'Entrada al Museo MUCH',      lugar:'Museo Chiapas (MUCH)', emoji:'🏛️' },
+      { key:'planetario', title:'MUCH · Planetario', label:'Entrada al Planetario MUCH', lugar:'Planetario MUCH',      emoji:'🔭' },
     ];
   }
   random(){ return this.PRIZES[Math.floor(Math.random()*this.PRIZES.length)]; }
@@ -132,6 +151,30 @@ class UIManager{
     }; tick();
   }
 
+  /**
+   * Guarda la partida en Supabase (tabla `quizzes`).
+   * Ajusta nombre de tabla/columnas según tu esquema REAL.
+   */
+  saveQuizToDB(isWinner, prizeOrNull){
+    if (!supabaseClient) return;
+    const payload = {
+      sala_slug: SALA,
+      puntos: this.state.points,
+      correctas: this.state.correct,
+      total_preguntas: QUESTIONS.length,
+      ganador: isWinner,
+      premio_key: prizeOrNull?.key || null,
+      premio_label: prizeOrNull?.label || null,
+      created_at: new Date().toISOString()
+    };
+    supabaseClient
+      .from('quizzes')      // <-- AJUSTA nombre de tabla si es distinto
+      .insert(payload)
+      .then(({ error })=>{
+        if (error) console.error('Error guardando quiz en Supabase:', error);
+      });
+  }
+
   redirectToRegistration(){
     if(!this.currentPrize) return;
     const prizeData = {
@@ -140,10 +183,14 @@ class UIManager{
       lugar: this.currentPrize.lugar,
       folio: 'MUCH-' + Math.random().toString(36).substring(2,8).toUpperCase(),
       date: new Intl.DateTimeFormat('es-MX',{dateStyle:'long'}).format(new Date()),
-      emoji: this.currentPrize.emoji
+      emoji: this.currentPrize.emoji,
+      sala: SALA
     };
     localStorage.setItem('much_quiz_prize', JSON.stringify(prizeData));
-    window.location.href = 'registro.html';
+
+    // Mandamos la sala en la URL a registro.html
+    const qs = new URLSearchParams({ sala: SALA });
+    window.location.href = 'registro.html?' + qs.toString();
   }
 
   render(){
@@ -172,9 +219,16 @@ class UIManager{
       if(allCorrect){
         const prize = this.prizeMgr.random();
         this.currentPrize = prize;
+
+        // Guardar partida ganadora
+        this.saveQuizToDB(true, prize);
+
         this.redirectToRegistration();
         return;
       } else {
+        // Guardar partida NO ganadora
+        this.saveQuizToDB(false, null);
+
         e.quizView.classList.add('d-none');
         e.finalView.classList.remove('d-none');
         e.finalTitle.textContent = 'Buen intento 👀';
