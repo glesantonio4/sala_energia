@@ -3,15 +3,12 @@ const params = new URLSearchParams(location.search);
 // Para la Sala Energía usamos el slug "energia"
 const SALA = params.get('sala') || 'energia';
 
-/* =================== Supabase (BASE MUCH) =================== */
-/**
- * IMPORTANTE:
- * 1) Agrega en el HTML donde cargas app.js:
- *    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
- * 2) Sustituye SUPABASE_URL y SUPABASE_ANON_KEY por los de tu proyecto.
- */
-const SUPABASE_URL = 'https://TU-PROYECTO.supabase.co';       // <-- CAMBIA ESTO
-const SUPABASE_ANON_KEY = 'TU-ANON-KEY-PUBLICA';               // <-- CAMBIA ESTO
+
+ <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="app.js"></script>
+
+ const SUPABASE_URL = 'https://qwgaeorsymfispmtsbut.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3Z2Flb3JzeW1maXNwbXRzYnV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzODcyODUsImV4cCI6MjA3Nzk2MzI4NX0.FThZIIpz3daC9u8QaKyRTpxUeW0v4QHs5sHX2s1U1eo';             // <-- CAMBIA ESTO
 
 let supabaseClient = null;
 if (window.supabase && SUPABASE_URL !== 'https://TU-PROYECTO.supabase.co') {
@@ -360,3 +357,4 @@ document.addEventListener('DOMContentLoaded', ()=>{
     start();
   }
 });
+
