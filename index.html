@@ -36,7 +36,8 @@
           <h1 class="h4 mb-1">MUCH · Quiz Interactivo</h1>
           <p class="tiny mb-0">Responde, aprende y ¡gana tu entrada! 🎁</p>
         </div>
-        <div id="pillSala" class="pill">Sala:Energia</div>
+        <!-- El texto inicial da igual: app.js lo sobrescribe con `Sala: ${SALA}` -->
+        <div id="pillSala" class="pill">Sala: Energía</div>
       </div>
 
       <div class="d-flex align-items-center justify-content-between mt-2 mb-2">
@@ -55,7 +56,9 @@
       <section id="quizView">
         <div class="question-card">
           <div class="d-flex align-items-center gap-2 mb-1">
-            <span class="badge text-bg-primary">Pregunta <span id="qIndex">1</span>/<span id="qTotal">—</span></span>
+            <span class="badge text-bg-primary">
+              Pregunta <span id="qIndex">1</span>/<span id="qTotal">—</span>
+            </span>
           </div>
           <h2 id="qText" class="h5 mb-1">…</h2>
           <p id="qDesc" class="tiny mb-3">…</p>
@@ -80,7 +83,9 @@
           <p id="finalMsg" class="tiny mb-3"></p>
 
           <p class="fs-5 fw-bold mb-1">⭐ Puntos: <span id="finalPoints">0</span></p>
-          <p class="tiny mb-3">Aciertos: <strong id="finalCorrect">0</strong> de <strong id="finalTotal">0</strong></p>
+          <p class="tiny mb-3">
+            Aciertos: <strong id="finalCorrect">0</strong> de <strong id="finalTotal">0</strong>
+          </p>
 
           <div id="giftRow" class="d-flex gap-2 flex-wrap d-none">
             <button id="openTicketBtn" class="btn btn-success">🎟️ Ver mi boleto</button>
@@ -95,7 +100,14 @@
     </div>
   </main>
 
+  <!-- Bootstrap -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Supabase (BASE MUCH) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Lógica del quiz + conexión a Supabase -->
   <script src="app.js"></script>
 </body>
 </html>
+
