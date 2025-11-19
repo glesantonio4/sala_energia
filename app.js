@@ -3,19 +3,39 @@ const params = new URLSearchParams(location.search);
 // Para la Sala Energía usamos el slug "energia" por defecto
 const SALA = params.get('sala') || 'energia';
 
-/* =================== Supabase (BASE MUCH) =================== */
-// IMPORTANTE: el <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-// VA EN index.html, NO AQUÍ.
+
+
+ <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+ <script src="app.js"></script>
+// El script de Supabase debe ir ANTES de app.js.
 
 const SUPABASE_URL = 'https://qwgaeorsymfispmtsbut.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3Z2Flb3JzeW1maXNwbXRzYnV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzODcyODUsImV4cCI6MjA3Nzk2MzI4NX0.FThZIIpz3daC9u8QaKyRTpxUeW0v4QHs5sHX2s1U1eo';
 
 let supabaseClient = null;
-if (window.supabase) {
-  const { createClient } = window.supabase;
-  supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-} else {
-  console.warn('Supabase JS no está disponible. Revisa el <script src="https://cdn.jsdelivr.net/..."> en tu index.html');
+
+/**
+ * Inicializa Supabase de forma segura (solo una vez).
+ * Requiere que el script CDN de Supabase esté cargado en el HTML.
+ */
+function initSupabase() {
+  if (supabaseClient) return supabaseClient;
+
+  if (!window.supabase) {
+    console.error('[Supabase] Librería JS no encontrada. Verifica el <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script> en tu HTML.');
+    return null;
+  }
+
+  try {
+    const { createClient } = window.supabase;
+    supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.info('[Supabase] Cliente inicializado correctamente.');
+    return supabaseClient;
+  } catch (err) {
+    console.error('[Supabase] Error al crear el cliente:', err);
+    supabaseClient = null;
+    return null;
+  }
 }
 
 /* =================== Datos =================== */
@@ -207,8 +227,13 @@ class UIManager{
    * Guarda la partida en Supabase (tabla `quizzes`).
    * Ajusta nombre de tabla/columnas según tu esquema REAL.
    */
-  saveQuizToDB(isWinner, prizeOrNull){
-    if (!supabaseClient) return;
+  async saveQuizToDB(isWinner, prizeOrNull){
+    const client = initSupabase();
+    if (!client) {
+      console.warn('[Supabase] No se pudo inicializar el cliente. El quiz NO se registrará en la base de datos.');
+      return;
+    }
+
     const payload = {
       sala_slug: SALA,
       puntos: this.state.points,
@@ -219,12 +244,20 @@ class UIManager{
       premio_label: prizeOrNull?.label || null,
       created_at: new Date().toISOString()
     };
-    supabaseClient
-      .from('quizzes')      // <-- AJUSTA nombre de tabla si es distinto
-      .insert(payload)
-      .then(({ error })=>{
-        if (error) console.error('Error guardando quiz en Supabase:', error);
-      });
+
+    try {
+      const { error } = await client
+        .from('quizzes')      // <-- AJUSTA nombre de tabla si es distinto en Supabase
+        .insert(payload);
+
+      if (error) {
+        console.error('[Supabase] Error guardando quiz en Supabase:', error, 'Payload:', payload);
+      } else {
+        console.info('[Supabase] Quiz guardado correctamente en Supabase.', payload);
+      }
+    } catch (err) {
+      console.error('[Supabase] Error inesperado al guardar quiz:', err, 'Payload:', payload);
+    }
   }
 
   redirectToRegistration(){
@@ -396,6 +429,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
   const start = async ()=>{
     try{
+      // Intentar inicializar Supabase desde el arranque (para detectar problemas temprano)
+      initSupabase();
+
       await loadPreguntas();
       if (welcome) welcome.classList.add('hidden');
       if (quizShell) quizShell.classList.remove('hidden');
