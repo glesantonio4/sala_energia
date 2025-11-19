@@ -1,116 +1,268 @@
-/* =================== Datos =================== */
+/* =================== Config Sala =================== */
 const params = new URLSearchParams(location.search);
-const SALA = params.get('sala') || 'Exploración';
-// Las preguntas se cargan desde `preguntas.json` en lugar de estar embebidas.
+// Para la Sala Energía usamos el slug "energia" por defecto
+const SALA = params.get('sala') || 'energia';
+
+/* =================== Datos base =================== */
 const NUM_QUESTIONS = 6;
 const shuffle = a => a.map(x=>[Math.random(),x]).sort((p,q)=>p[0]-q[0]).map(p=>p[1]);
 
 // Placeholder: QUESTIONS se inicializará tras cargar el JSON.
 let QUESTIONS = [];
 
+/* ==== SUPABASE: init + helpers (igual que ENTRADA MUCH) ==== */
 const SUPABASE_URL = 'https://qwgaeorsymfispmtsbut.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3Z2Flb3JzeW1maXNwbXRzYnV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzODcyODUsImV4cCI6MjA3Nzk2MzI4NX0.FThZIIpz3daC9u8QaKyRTpxUeW0v4QHs5sHX2s1U1eo';
+let supabase = null;
 
-let supabaseClient = null;
+async function initSupabase() {
+  if (supabase) return supabase;
+  const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+  supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  return supabase;
+}
 
-/**
- * Inicializa Supabase de forma segura (solo una vez).
- * Requiere que el script CDN de Supabase esté cargado en el HTML.
- */
-function initSupabase() {
-  if (supabaseClient) return supabaseClient;
+// Toma un sala_id válido (de 'salas' o de 'quizzes') sin romper si no existe el nombre de sala
+async function getAnySalaId() {
+  await initSupabase();
+  // 1) intenta desde 'salas'
+  let { data, error } = await supabase.from('salas').select('id').limit(1);
+  if (!error && data?.length) return data[0].id;
 
-  if (!window.supabase) {
-    console.error('[Supabase] Librería JS no encontrada. Verifica el <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script> en tu HTML.');
+  // 2) fallback: toma sala_id usado en algún quiz
+  ({ data, error } = await supabase
+    .from('quizzes')
+    .select('sala_id')
+    .not('sala_id','is', null)
+    .order('started_at', { ascending: false })
+    .limit(1));
+  if (!error && data?.length) return data[0].sala_id;
+
+  return null; // si no hay, no tronamos
+}
+
+// Garantiza un participante_id (usa existente o crea vacío)
+async function ensureParticipanteId() {
+  await initSupabase();
+
+  // 1) usa uno ya usado en quizzes
+  let { data, error } = await supabase
+    .from('quizzes')
+    .select('participante_id')
+    .not('participante_id', 'is', null)
+    .order('started_at', { ascending: false })
+    .limit(1);
+  if (!error && data?.length) return data[0].participante_id;
+
+  // 2) toma cualquiera de la tabla participantes
+  ({ data, error } = await supabase
+    .from('participantes')
+    .select('id')
+    .limit(1));
+  if (!error && data?.length) return data[0].id;
+
+  // 3) crea uno vacío (si tu esquema lo permite)
+  const ins = await supabase
+    .from('participantes')
+    .insert({})
+    .select('id')
+    .single();
+
+  if (ins.error) {
+    console.warn('No se pudo crear participante:', ins.error.message);
     return null;
   }
+  return ins.data.id;
+}
 
+// Crea un registro en quizzes cuando empieza el juego
+async function startQuizInDB() {
   try {
-    const { createClient } = window.supabase;
-    supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    console.info('[Supabase] Cliente inicializado correctamente.');
-    return supabaseClient;
-  } catch (err) {
-    console.error('[Supabase] Error al crear el cliente:', err);
-    supabaseClient = null;
+    await initSupabase();
+    const sala_id = await getAnySalaId();
+    const participante_id = await ensureParticipanteId();
+
+    const payload = {
+      sala_id,
+      participante_id,
+      started_at: new Date().toISOString(),
+      num_preguntas: NUM_QUESTIONS
+    };
+
+    const { data, error } = await supabase
+      .from('quizzes')
+      .insert(payload)
+      .select('id')
+      .single();
+
+    if (error) { 
+      console.warn('No se pudo crear quiz:', error.message); 
+      return null; 
+    }
+    sessionStorage.setItem('much_current_quiz_id', data.id);
+    return data.id;
+  } catch (e) {
+    console.warn('startQuizInDB error:', e?.message || e);
     return null;
   }
 }
 
-/* =================== Datos =================== */
-// Las preguntas se cargan desde `preguntas.json`.
-// Si hay error, se usa un banco de respaldo para que el juego no se quede en "..."
-const NUM_QUESTIONS = 6;
-const shuffle = a => a.map(x=>[Math.random(),x]).sort((p,q)=>p[0]-q[0]).map(p=>p[1]);
+// Cierra el quiz en BD al terminar
+async function endQuizInDB({ puntaje_total, num_correctas, num_preguntas }) {
+  try {
+    await initSupabase();
+    const quizId = sessionStorage.getItem('much_current_quiz_id');
+    if (!quizId) return;
+    const { error } = await supabase
+      .from('quizzes')
+      .update({
+        puntaje_total,
+        num_correctas,
+        num_preguntas,
+        finished_at: new Date().toISOString()
+      })
+      .eq('id', quizId);
+    if (error) console.warn('endQuizInDB error:', error.message);
+  } catch (e) {
+    console.warn('endQuizInDB ex:', e?.message || e);
+  }
+}
 
-// Placeholder: QUESTIONS se inicializará tras cargar el JSON.
-let QUESTIONS = [];
-
-// Función para cargar preguntas desde el archivo preguntas.json
+/* =================== Cargar preguntas =================== */
+/**
+ * Carga preguntas desde preguntas.json (esquema flexible multi-sala).
+ * Si falla el fetch y la sala es "energia", usa un banco de respaldo local.
+ */
 async function loadPreguntas(){
   try{
     const resp = await fetch('preguntas.json', { cache: 'no-store' });
     if(!resp.ok) throw new Error('No se pudo cargar preguntas.json: ' + resp.status);
+    let bank = await resp.json();
 
-    const bank = await resp.json();
-    if(!Array.isArray(bank) || bank.length===0) {
-      throw new Error('preguntas.json no contiene un array de preguntas');
+    // 1) Si viene por salas (objeto con arrays), intenta usar la sala actual; si no, toma el primer array.
+    if (!Array.isArray(bank)) {
+      const keys = Object.keys(bank || {});
+      if (keys.length && bank[SALA]) {
+        bank = bank[SALA];
+      } else if (keys.length) {
+        const firstKey = keys.find(k => Array.isArray(bank[k]));
+        if (firstKey) bank = bank[firstKey];
+      }
     }
 
-    QUESTIONS = shuffle(bank).slice(0, NUM_QUESTIONS);
-    console.log('Preguntas cargadas desde preguntas.json:', QUESTIONS.length);
+    if(!Array.isArray(bank) || bank.length===0)
+      throw new Error('preguntas.json no contiene un array de preguntas');
+
+    // 2) Normaliza objetos a { text, options[], correctIndex, points, desc? }
+    const normalize = (it) => {
+      const text = it.text ?? it.pregunta ?? it.enunciado ?? 'Pregunta sin texto';
+      const desc = it.desc ?? it.descripcion ?? '';
+      let options = it.options ?? it.opciones ?? it.respuestas ?? [];
+      let correctIndex = it.correctIndex ?? it.correcta_index;
+
+      // Si options es array de objetos {texto, correcta}
+      if (Array.isArray(options) && typeof options[0] === 'object') {
+        const idx = options.findIndex(o => o.correcta === true || o.esCorrecta === true);
+        if (correctIndex == null && idx >= 0) correctIndex = idx;
+        options = options.map(o => o.text ?? o.texto ?? o.label ?? String(o));
+      }
+
+      // Si correcta es texto → buscar índice
+      if (correctIndex == null && typeof it.correcta === 'string') {
+        const idx2 = options.findIndex(o => String(o).trim() === String(it.correcta).trim());
+        if (idx2 >= 0) correctIndex = idx2;
+      }
+
+      // Si hay respuesta numérica (1..n)
+      if (correctIndex == null && (it.respuesta || it.respuesta_correcta)) {
+        const num = (it.respuesta ?? it.respuesta_correcta) - 1;
+        if (!Number.isNaN(num)) correctIndex = num;
+      }
+
+      const points = it.points ?? it.puntos ?? 1;
+
+      if (!Array.isArray(options) || options.length === 0) {
+        console.warn('Pregunta sin opciones:', it);
+        options = ['(sin opciones)'];
+        correctIndex = 0;
+      }
+      if (correctIndex == null || correctIndex < 0 || correctIndex >= options.length) {
+        correctIndex = 0;
+      }
+      return { text, options, correctIndex, points, desc };
+    };
+
+    // 3) Filtro opcional por sala si el JSON trae campo sala/sala_codigo por pregunta
+    const bySala = bank.filter(q =>
+      !q?.sala && !q?.sala_codigo ? true :
+      (q.sala === SALA || q.sala_codigo === SALA)
+    );
+
+    const pool = bySala.length ? bySala : bank;
+    const normalized = pool.map(normalize);
+
+    // 4) Mezcla y selecciona
+    QUESTIONS = shuffle(normalized).slice(0, NUM_QUESTIONS);
+
+    console.log('[loadPreguntas] SALA=', SALA, 'pool=', pool.length, 'usadas=', QUESTIONS.length, QUESTIONS);
     return QUESTIONS;
   }catch(err){
-    console.error('Error al cargar preguntas.json, usando banco de respaldo:', err);
+    console.error('[loadPreguntas] Error, intentando fallback para Energía si aplica:', err);
 
-    // 🔁 Banco mínimo de respaldo (Sala Energía) por si el JSON falla
-    const fallback = [
-      {
-        text: "¿Cuál es una fuente de energía renovable?",
-        desc: "Ejemplo de pregunta para la Sala Energía.",
-        options: ["Petróleo", "Carbón", "Energía solar", "Gas natural"],
-        correctIndex: 2,
-        points: 10
-      },
-      {
-        text: "¿Qué dispositivo convierte la luz del sol en electricidad?",
-        desc: "",
-        options: ["Turbina de viento", "Panel solar", "Calentador de gas", "Motor de combustión"],
-        correctIndex: 1,
-        points: 10
-      },
-      {
-        text: "¿Cuál de estos es un beneficio de la energía renovable?",
-        desc: "",
-        options: ["Produce más contaminación", "Es casi inagotable", "Siempre es más cara", "Solo se usa de noche"],
-        correctIndex: 1,
-        points: 10
-      },
-      {
-        text: "¿Qué tipo de energía aprovechamos con una turbina eólica?",
-        desc: "",
-        options: ["Energía térmica", "Energía nuclear", "Energía del viento", "Energía química"],
-        correctIndex: 2,
-        points: 10
-      },
-      {
-        text: "¿Cuál de estos aparatos consume MÁS energía en casa normalmente?",
-        desc: "",
-        options: ["Televisor apagado", "Cargador desconectado", "Refrigerador", "Foco LED apagado"],
-        correctIndex: 2,
-        points: 10
-      },
-      {
-        text: "¿Qué acción ayuda a ahorrar energía eléctrica?",
-        desc: "",
-        options: ["Dejar luces encendidas", "Usar focos LED", "Abrir el refrigerador a cada rato", "Tener aparatos en standby todo el día"],
-        correctIndex: 1,
-        points: 10
-      }
-    ];
+    // 🔁 Banco mínimo de respaldo SOLO para la sala Energía
+    if (SALA === 'energia') {
+      const fallback = [
+        {
+          text: "¿Cuál es una fuente de energía renovable?",
+          desc: "Ejemplo de pregunta para la Sala Energía.",
+          options: ["Petróleo", "Carbón", "Energía solar", "Gas natural"],
+          correctIndex: 2,
+          points: 10
+        },
+        {
+          text: "¿Qué dispositivo convierte la luz del sol en electricidad?",
+          desc: "",
+          options: ["Turbina de viento", "Panel solar", "Calentador de gas", "Motor de combustión"],
+          correctIndex: 1,
+          points: 10
+        },
+        {
+          text: "¿Cuál de estos es un beneficio de la energía renovable?",
+          desc: "",
+          options: ["Produce más contaminación", "Es casi inagotable", "Siempre es más cara", "Solo se usa de noche"],
+          correctIndex: 1,
+          points: 10
+        },
+        {
+          text: "¿Qué tipo de energía aprovechamos con una turbina eólica?",
+          desc: "",
+          options: ["Energía térmica", "Energía nuclear", "Energía del viento", "Energía química"],
+          correctIndex: 2,
+          points: 10
+        },
+        {
+          text: "¿Cuál de estos aparatos consume MÁS energía en casa normalmente?",
+          desc: "",
+          options: ["Televisor apagado", "Cargador desconectado", "Refrigerador", "Foco LED apagado"],
+          correctIndex: 2,
+          points: 10
+        },
+        {
+          text: "¿Qué acción ayuda a ahorrar energía eléctrica?",
+          desc: "",
+          options: ["Dejar luces encendidas", "Usar focos LED", "Abrir el refrigerador a cada rato", "Tener aparatos en standby todo el día"],
+          correctIndex: 1,
+          points: 10
+        }
+      ];
 
-    QUESTIONS = shuffle(fallback).slice(0, NUM_QUESTIONS);
-    return QUESTIONS;
+      QUESTIONS = shuffle(fallback).slice(0, NUM_QUESTIONS);
+      console.log('[loadPreguntas] Usando banco de respaldo para SALA=energia. Preguntas:', QUESTIONS.length);
+      return QUESTIONS;
+    }
+
+    alert('Error al cargar preguntas. Revisa preguntas.json en el servidor.\n' + err.message);
+    throw err;
   }
 }
 
@@ -118,7 +270,6 @@ async function loadPreguntas(){
 class SoundFX{
   constructor(toggleEl){ this.toggleEl = toggleEl; this.ctx = null; }
   beep(freq=880, dur=0.15, type='sine', vol=0.08){
-    // ✅ Soporta ausencia del switch de sonido (portada o páginas sin el control)
     if (this.toggleEl && !this.toggleEl.checked) return;
     this.ctx = this.ctx || new (window.AudioContext||window.webkitAudioContext)();
     const o=this.ctx.createOscillator(), g=this.ctx.createGain();
@@ -222,43 +373,6 @@ class UIManager{
     }; tick();
   }
 
-  /**
-   * Guarda la partida en Supabase (tabla `quizzes`).
-   * Ajusta nombre de tabla/columnas según tu esquema REAL.
-   */
-  async saveQuizToDB(isWinner, prizeOrNull){
-    const client = initSupabase();
-    if (!client) {
-      console.warn('[Supabase] No se pudo inicializar el cliente. El quiz NO se registrará en la base de datos.');
-      return;
-    }
-
-    const payload = {
-      sala_slug: SALA,
-      puntos: this.state.points,
-      correctas: this.state.correct,
-      total_preguntas: QUESTIONS.length,
-      ganador: isWinner,
-      premio_key: prizeOrNull?.key || null,
-      premio_label: prizeOrNull?.label || null,
-      created_at: new Date().toISOString()
-    };
-
-    try {
-      const { error } = await client
-        .from('quizzes')      // <-- AJUSTA nombre de tabla si es distinto en Supabase
-        .insert(payload);
-
-      if (error) {
-        console.error('[Supabase] Error guardando quiz en Supabase:', error, 'Payload:', payload);
-      } else {
-        console.info('[Supabase] Quiz guardado correctamente en Supabase.', payload);
-      }
-    } catch (err) {
-      console.error('[Supabase] Error inesperado al guardar quiz:', err, 'Payload:', payload);
-    }
-  }
-
   redirectToRegistration(){
     if(!this.currentPrize) return;
     const prizeData = {
@@ -272,7 +386,6 @@ class UIManager{
     };
     localStorage.setItem('much_quiz_prize', JSON.stringify(prizeData));
 
-    // Mandamos la sala en la URL a registro.html
     const qs = new URLSearchParams({ sala: SALA });
     window.location.href = 'registro.html?' + qs.toString();
   }
@@ -300,19 +413,20 @@ class UIManager{
 
     if(s.idx>=QUESTIONS.length){
       const allCorrect = s.correct===QUESTIONS.length;
+
+      // Cerrar quiz en BD (no bloquea la UI)
+      endQuizInDB({
+        puntaje_total: Math.round((s.correct / QUESTIONS.length) * 100),
+        num_correctas: s.correct,
+        num_preguntas: QUESTIONS.length
+      });
+
       if(allCorrect){
         const prize = this.prizeMgr.random();
         this.currentPrize = prize;
-
-        // Guardar partida ganadora
-        this.saveQuizToDB(true, prize);
-
         this.redirectToRegistration();
         return;
       } else {
-        // Guardar partida NO ganadora
-        this.saveQuizToDB(false, null);
-
         e.quizView.classList.add('d-none');
         e.finalView.classList.remove('d-none');
         e.finalTitle.textContent = 'Buen intento 👀';
@@ -381,7 +495,7 @@ class UIManager{
   }
 }
 
-/* =================== Instanciación segura para portada/index =================== */
+/* =================== Instanciación segura =================== */
 
 // Referencias a elementos del QUIZ (si no existen, quedan en null)
 const elements = {
@@ -428,10 +542,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
   const start = async ()=>{
     try{
-      // Intentar inicializar Supabase desde el arranque (para detectar problemas temprano)
-      initSupabase();
-
-      await loadPreguntas();
+      await loadPreguntas();    // llena QUESTIONS
+      await startQuizInDB();    // crea un quiz en Supabase
       if (welcome) welcome.classList.add('hidden');
       if (quizShell) quizShell.classList.remove('hidden');
       new UIManager({ elements, sound, confetti, prizeMgr });
@@ -443,8 +555,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
   if (startBtn && welcome) {
     startBtn.addEventListener('click', (e)=>{ e.preventDefault(); start(); });
   } else {
-    // No hay portada en esta página → inicia solo
     start();
   }
 });
-
