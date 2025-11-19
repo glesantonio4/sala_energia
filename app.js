@@ -1,13 +1,12 @@
-/* =================== Config Sala =================== */
+/* =================== Datos =================== */
 const params = new URLSearchParams(location.search);
-// Para la Sala Energía usamos el slug "energia" por defecto
-const SALA = params.get('sala') || 'energia';
+const SALA = params.get('sala') || 'Exploración';
+// Las preguntas se cargan desde `preguntas.json` en lugar de estar embebidas.
+const NUM_QUESTIONS = 6;
+const shuffle = a => a.map(x=>[Math.random(),x]).sort((p,q)=>p[0]-q[0]).map(p=>p[1]);
 
-
-
- <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
- <script src="app.js"></script>
-// El script de Supabase debe ir ANTES de app.js.
+// Placeholder: QUESTIONS se inicializará tras cargar el JSON.
+let QUESTIONS = [];
 
 const SUPABASE_URL = 'https://qwgaeorsymfispmtsbut.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3Z2Flb3JzeW1maXNwbXRzYnV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzODcyODUsImV4cCI6MjA3Nzk2MzI4NX0.FThZIIpz3daC9u8QaKyRTpxUeW0v4QHs5sHX2s1U1eo';
@@ -448,3 +447,4 @@ document.addEventListener('DOMContentLoaded', ()=>{
     start();
   }
 });
+
