@@ -1,23 +1,26 @@
 /* =================== Config Sala =================== */
 const params = new URLSearchParams(location.search);
-// Para la Sala Energía usamos el slug "energia"
+// Para la Sala Energía usamos el slug "energia" por defecto
 const SALA = params.get('sala') || 'energia';
 
+/* =================== Supabase (BASE MUCH) =================== */
+// IMPORTANTE: el <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+// VA EN index.html, NO AQUÍ.
 
- <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js"></script>
-
- const SUPABASE_URL = 'https://qwgaeorsymfispmtsbut.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3Z2Flb3JzeW1maXNwbXRzYnV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzODcyODUsImV4cCI6MjA3Nzk2MzI4NX0.FThZIIpz3daC9u8QaKyRTpxUeW0v4QHs5sHX2s1U1eo';             // <-- CAMBIA ESTO
+const SUPABASE_URL = 'https://qwgaeorsymfispmtsbut.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3Z2Flb3JzeW1maXNwbXRzYnV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzODcyODUsImV4cCI6MjA3Nzk2MzI4NX0.FThZIIpz3daC9u8QaKyRTpxUeW0v4QHs5sHX2s1U1eo';
 
 let supabaseClient = null;
-if (window.supabase && SUPABASE_URL !== 'https://TU-PROYECTO.supabase.co') {
+if (window.supabase) {
   const { createClient } = window.supabase;
   supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+} else {
+  console.warn('Supabase JS no está disponible. Revisa el <script src="https://cdn.jsdelivr.net/..."> en tu index.html');
 }
 
 /* =================== Datos =================== */
-// Las preguntas se cargan desde `preguntas.json` en lugar de estar embebidas.
+// Las preguntas se cargan desde `preguntas.json`.
+// Si hay error, se usa un banco de respaldo para que el juego no se quede en "..."
 const NUM_QUESTIONS = 6;
 const shuffle = a => a.map(x=>[Math.random(),x]).sort((p,q)=>p[0]-q[0]).map(p=>p[1]);
 
@@ -29,14 +32,66 @@ async function loadPreguntas(){
   try{
     const resp = await fetch('preguntas.json', { cache: 'no-store' });
     if(!resp.ok) throw new Error('No se pudo cargar preguntas.json: ' + resp.status);
+
     const bank = await resp.json();
-    if(!Array.isArray(bank) || bank.length===0) throw new Error('preguntas.json no contiene un array de preguntas');
+    if(!Array.isArray(bank) || bank.length===0) {
+      throw new Error('preguntas.json no contiene un array de preguntas');
+    }
+
     QUESTIONS = shuffle(bank).slice(0, NUM_QUESTIONS);
+    console.log('Preguntas cargadas desde preguntas.json:', QUESTIONS.length);
     return QUESTIONS;
   }catch(err){
-    console.error(err);
-    alert('Error al cargar preguntas. Revisa preguntas.json en el servidor.\n' + err.message);
-    throw err;
+    console.error('Error al cargar preguntas.json, usando banco de respaldo:', err);
+
+    // 🔁 Banco mínimo de respaldo (Sala Energía) por si el JSON falla
+    const fallback = [
+      {
+        text: "¿Cuál es una fuente de energía renovable?",
+        desc: "Ejemplo de pregunta para la Sala Energía.",
+        options: ["Petróleo", "Carbón", "Energía solar", "Gas natural"],
+        correctIndex: 2,
+        points: 10
+      },
+      {
+        text: "¿Qué dispositivo convierte la luz del sol en electricidad?",
+        desc: "",
+        options: ["Turbina de viento", "Panel solar", "Calentador de gas", "Motor de combustión"],
+        correctIndex: 1,
+        points: 10
+      },
+      {
+        text: "¿Cuál de estos es un beneficio de la energía renovable?",
+        desc: "",
+        options: ["Produce más contaminación", "Es casi inagotable", "Siempre es más cara", "Solo se usa de noche"],
+        correctIndex: 1,
+        points: 10
+      },
+      {
+        text: "¿Qué tipo de energía aprovechamos con una turbina eólica?",
+        desc: "",
+        options: ["Energía térmica", "Energía nuclear", "Energía del viento", "Energía química"],
+        correctIndex: 2,
+        points: 10
+      },
+      {
+        text: "¿Cuál de estos aparatos consume MÁS energía en casa normalmente?",
+        desc: "",
+        options: ["Televisor apagado", "Cargador desconectado", "Refrigerador", "Foco LED apagado"],
+        correctIndex: 2,
+        points: 10
+      },
+      {
+        text: "¿Qué acción ayuda a ahorrar energía eléctrica?",
+        desc: "",
+        options: ["Dejar luces encendidas", "Usar focos LED", "Abrir el refrigerador a cada rato", "Tener aparatos en standby todo el día"],
+        correctIndex: 1,
+        points: 10
+      }
+    ];
+
+    QUESTIONS = shuffle(fallback).slice(0, NUM_QUESTIONS);
+    return QUESTIONS;
   }
 }
 
@@ -357,4 +412,3 @@ document.addEventListener('DOMContentLoaded', ()=>{
     start();
   }
 });
-
