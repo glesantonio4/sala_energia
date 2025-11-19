@@ -155,91 +155,82 @@
     </div>
   </div>
 
-  <!-- Supabase JS (para leer boleto desde la BD si es posible) -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <script>
-  (async function(){
-    const qs = new URLSearchParams(location.search);
+<script>
+(async () => {
+  console.log("[BOLETO] Iniciando carga del boleto...");
 
-    let prizeData = null;
-    try{
-      const raw = localStorage.getItem('much_quiz_prize');
-      if(raw) prizeData = JSON.parse(raw);
-    }catch(_){}
+  const SUPABASE_URL = "https://qwgaeorsymfispmtsbut.supabase.co";
+  const SUPABASE_ANON_KEY =
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3Z2Flb3JzeW1maXNwbXRzYnV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzODcyODUsImV4cCI6MjA3Nzk2MzI4NX0.FThZIIpz3daC9u8QaKyRTpxUeW0v4QHs5sHX2s1U1eo";
 
-    const nombreQS  = qs.get('nombre')   || '';
-    const correoQS  = qs.get('correo')   || '';
-    const telQS     = qs.get('telefono') || '';
-    const premioQS  = qs.get('premio')   || '';
-    const folioQS   = qs.get('folio')    || '';
-    const lugarQS   = qs.get('lugar')    || '';
-    const salaQS    = qs.get('sala')     || 'energia';
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const qs = new URLSearchParams(location.search);
+  const nombreQS = qs.get("nombre") || "";
+
+  console.log("[BOLETO] Buscando en BD el boleto para:", nombreQS);
+
+  // Buscar el boleto existente en BD
+  let { data: boletos, error } = await supabase
+    .from("boletos")
+    .select("*")
+    .eq("participante_nombre", nombreQS)
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  if (error) {
+    console.warn("[BOLETO] Error al consultar BD:", error);
+  }
+
+  const el = (id) => document.getElementById(id);
+
+  // Si NO hay registro en BD, usar parámetros de la URL
+  if (!boletos || boletos.length === 0) {
+    console.warn("[BOLETO] No se encontró boleto en BD, usando parámetros de la URL…");
+
+    const nombre  = qs.get("nombre") || "—";
+    const correo  = qs.get("correo") || "—";
+    const telefono= qs.get("telefono") || "—";
+    const premio  = qs.get("premio") || "Entrada general";
+    const folio   = qs.get("folio") || "—";
+    const lugar   = qs.get("lugar") || "MUCH";
 
     const hoy = new Date();
     const fin = new Date(hoy); fin.setDate(hoy.getDate() + 7);
-    const fmt = new Intl.DateTimeFormat('es-MX', { dateStyle: 'long' });
-    let fechaHoy = fmt.format(hoy);
-    let fechaFin = fmt.format(fin);
 
-    const nombre = nombreQS || '—';
-    const correo = correoQS || '—';
-    const tel    = telQS    || '—';
-    let premio   = (prizeData?.label) || premioQS || 'Entrada general';
-    const folio  = (prizeData?.folio) || folioQS  || ('MUCH-' + Math.random().toString(36).substring(2,8).toUpperCase());
-    const lugar  = (prizeData?.lugar) || lugarQS  || 'MUCH';
-    const title  = (prizeData?.title) || 'MUCH · Premio';
+    const fmt = new Intl.DateTimeFormat("es-MX",{ dateStyle:"long" });
 
-    const el = (id)=> document.getElementById(id);
-    el('tTitle').textContent  = title + ' · Sala ' + salaQS;
-    el('tFolio').textContent  = 'Folio: ' + folio;
-    el('tNombre').textContent = nombre;
-    el('tPremio').textContent = premio;
-    el('tFecha').textContent  = `Del ${fechaHoy} al ${fechaFin} (válido 7 días)`;
-    el('tLugar').textContent  = lugar;
-    el('tCorreo').textContent = correo;
-    el('tTel').textContent    = tel;
+    el("tTitle").textContent  = "MUCH · Premio";
+    el("tFolio").textContent  = "Folio: " + folio;
+    el("tNombre").textContent = nombre;
+    el("tPremio").textContent = premio;
+    el("tFecha").textContent  = `Del ${fmt.format(hoy)} al ${fmt.format(fin)} (válido 7 días)`;
+    el("tLugar").textContent  = lugar;
+    el("tCorreo").textContent = correo;
+    el("tTel").textContent    = telefono;
 
-    // ===== EXTRA: intentar leer el boleto real desde Supabase y sobrescribir datos =====
-    const SUPABASE_URL = 'https://qwgaeorsymfispmtsbut.supabase.co';
-    const SUPABASE_ANON_KEY =
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3Z2Flb3JzeW1maXNwbXRzYnV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzODcyODUsImV4cCI6MjA3Nzk2MzI4NX0.FThZIIpz3daC9u8QaKyRTpxUeW0v4QHs5sHX2s1U1eo';
+    return;
+  }
 
-    if (window.supabase && typeof window.supabase.createClient === 'function' && nombre !== '—') {
-      try{
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  // ✔ Si SÍ existe en Supabase, usarlo
+  const b = boletos[0];
+  console.log("[BOLETO] Boleto encontrado en BD:", b);
 
-        // Último boleto de este participante
-        const { data, error } = await supabase
-          .from('boletos')
-          .select('participante_nombre,premio_nombre,desde,valido_hasta,created_at')
-          .eq('participante_nombre', nombre)
-          .order('created_at', { ascending:false })
-          .limit(1)
-          .maybeSingle();
+  const hoy = new Date(b.created_at);
+  const fin = new Date(b.valido_hasta);
 
-        if (error) {
-          console.warn('[BOLETO] No se pudo consultar boleto en BD:', error.message);
-        } else if (data) {
-          // Si hay premio_nombre en BD, lo usamos
-          if (data.premio_nombre) {
-            premio = data.premio_nombre;
-            el('tPremio').textContent = premio;
-          }
-          // Si hay fechas en BD, usamos esas
-          if (data.desde && data.valido_hasta) {
-            const dIni = new Date(data.desde);
-            const dFin = new Date(data.valido_hasta);
-            fechaHoy = fmt.format(dIni);
-            fechaFin = fmt.format(dFin);
-            el('tFecha').textContent = `Del ${fechaHoy} al ${fechaFin}`;
-          }
-        }
-      }catch(e){
-        console.warn('[BOLETO] Error inesperado consultando Supabase:', e);
-      }
-    }
-  })();
-  </script>
-</body>
-</html>
+  const fmt = new Intl.DateTimeFormat("es-MX",{ dateStyle:"long" });
+
+  el("tTitle").textContent  = "MUCH · Premio";
+  el("tFolio").textContent  = "Folio: " + (b.id || "—");
+  el("tNombre").textContent = b.participante_nombre || "—";
+  el("tPremio").textContent = b.premio_nombre || "Entrada general";
+  el("tFecha").textContent  = `Del ${fmt.format(hoy)} al ${fmt.format(fin)} (válido 7 días)`;
+  el("tLugar").textContent  = "MUCH";
+  el("tCorreo").textContent = qs.get("correo") || "—";
+  el("tTel").textContent    = qs.get("telefono") || "—";
+
+})();
+</script>
