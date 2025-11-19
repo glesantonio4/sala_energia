@@ -41,7 +41,6 @@
       padding:clamp(18px, 3vw, 26px); position:relative; background:#fff;
     }
 
-    /* CABECERA: grid 3 columnas (logo - centro - logo) */
     .ticket-head{
       display:grid;
       grid-template-columns: auto 1fr auto;
@@ -83,7 +82,6 @@
     .btn-link{ background:#fff; color:#0b1220; border:1px solid #e5e7eb; }
     .muted{ color:var(--muted); font-weight:600; margin-top:10px; }
 
-    /* MÓVIL */
     @media (max-width: 600px){
       body{
         padding:
@@ -96,7 +94,6 @@
       .ticket-card{ padding:14px; border-radius:16px; box-shadow:0 14px 28px rgba(2,6,23,.16); }
       .ticket-paper{ padding:14px; border-radius:14px; }
 
-      /* cabecera: logos más contenidos y folio pasa debajo del título */
       .ticket-logo{ width:96px; max-width:30vw; }
       .ticket-head{
         grid-template-columns: auto 1fr auto;
@@ -111,7 +108,6 @@
       .actions .btn{ flex:1 1 100%; justify-content:center; padding:12px; font-size:1rem; }
     }
 
-    /* IMPRESIÓN */
     @media print{
       html,body{ background:#fff !important; animation:none !important; }
       body{ padding:0 !important; }
@@ -175,6 +171,7 @@
     const premioQS  = qs.get('premio')   || '';
     const folioQS   = qs.get('folio')    || '';
     const lugarQS   = qs.get('lugar')    || '';
+    const salaQS    = qs.get('sala')     || 'energia';
 
     const hoy = new Date();
     const fin = new Date(hoy); fin.setDate(hoy.getDate() + 7);
@@ -191,7 +188,7 @@
     const title  = (prizeData?.title) || 'MUCH · Premio';
 
     const el = (id)=> document.getElementById(id);
-    el('tTitle').textContent  = title;
+    el('tTitle').textContent  = title + ' · Sala ' + salaQS;
     el('tFolio').textContent  = 'Folio: ' + folio;
     el('tNombre').textContent = nombre;
     el('tPremio').textContent = premio;
@@ -203,3 +200,4 @@
   </script>
 </body>
 </html>
+
