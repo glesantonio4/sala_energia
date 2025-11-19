@@ -155,82 +155,105 @@
     </div>
   </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<script>
-(async () => {
-  console.log("[BOLETO] Iniciando carga del boleto...");
+  <script>
+  (async () => {
+    console.log("[BOLETO] Iniciando carga del boleto...");
 
-  const SUPABASE_URL = "https://qwgaeorsymfispmtsbut.supabase.co";
-  const SUPABASE_ANON_KEY =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3Z2Flb3JzeW1maXNwbXRzYnV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzODcyODUsImV4cCI6MjA3Nzk2MzI4NX0.FThZIIpz3daC9u8QaKyRTpxUeW0v4QHs5sHX2s1U1eo";
+    const SUPABASE_URL = "https://qwgaeorsymfispmtsbut.supabase.co";
+    const SUPABASE_ANON_KEY =
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3Z2Flb3JzeW1maXNwbXRzYnV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzODcyODUsImV4cCI6MjA3Nzk2MzI4NX0.FThZIIpz3daC9u8QaKyRTpxUeW0v4QHs5sHX2s1U1eo";
 
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  const qs = new URLSearchParams(location.search);
-  const nombreQS = qs.get("nombre") || "";
+    const qs = new URLSearchParams(location.search);
+    const nombreQS = qs.get("nombre") || "";
+    const folioQS  = qs.get("folio")  || "";
 
-  console.log("[BOLETO] Buscando en BD el boleto para:", nombreQS);
+    console.log("[BOLETO] Buscando en BD. nombre:", nombreQS, "folio:", folioQS);
 
-  // Buscar el boleto existente en BD
-  let { data: boletos, error } = await supabase
-    .from("boletos")
-    .select("*")
-    .eq("participante_nombre", nombreQS)
-    .order("created_at", { ascending: false })
-    .limit(1);
+    const el = (id) => document.getElementById(id);
 
-  if (error) {
-    console.warn("[BOLETO] Error al consultar BD:", error);
-  }
+    // -------- 1) Intentar obtener el boleto desde Supabase --------
+    let query = supabase.from("boletos").select("*").order("created_at", { ascending: false }).limit(1);
 
-  const el = (id) => document.getElementById(id);
+    if (folioQS) {
+      // Buscar primero por folio (clave única)
+      query = query.eq("folio", folioQS);
+    } else if (nombreQS) {
+      // Si no hay folio, buscar por nombre (plan B)
+      query = query.eq("participante_nombre", nombreQS);
+    }
 
-  // Si NO hay registro en BD, usar parámetros de la URL
-  if (!boletos || boletos.length === 0) {
-    console.warn("[BOLETO] No se encontró boleto en BD, usando parámetros de la URL…");
+    let { data: boletos, error } = await query;
 
-    const nombre  = qs.get("nombre") || "—";
-    const correo  = qs.get("correo") || "—";
-    const telefono= qs.get("telefono") || "—";
-    const premio  = qs.get("premio") || "Entrada general";
-    const folio   = qs.get("folio") || "—";
-    const lugar   = qs.get("lugar") || "MUCH";
+    if (error) {
+      console.warn("[BOLETO] Error al consultar BD:", error);
+    }
 
-    const hoy = new Date();
-    const fin = new Date(hoy); fin.setDate(hoy.getDate() + 7);
+    // -------- 2) Si NO hay registro en BD, usar datos de la URL --------
+    if (!boletos || boletos.length === 0) {
+      console.warn("[BOLETO] No se encontró boleto en BD, usando parámetros de la URL…");
+
+      const nombre   = nombreQS || "—";
+      const correo   = qs.get("correo")   || "—";
+      const telefono = qs.get("telefono") || "—";
+      const premio   = qs.get("premio")   || "Entrada general";
+      const folio    = folioQS            || "—";
+      const lugar    = qs.get("lugar")    || "MUCH";
+
+      const hoy = new Date();
+      const fin = new Date(hoy); fin.setDate(hoy.getDate() + 7);
+      const fmt = new Intl.DateTimeFormat("es-MX",{ dateStyle:"long" });
+
+      el("tTitle").textContent  = "MUCH · Premio";
+      el("tFolio").textContent  = "Folio: " + folio;
+      el("tNombre").textContent = nombre;
+      el("tPremio").textContent = premio;
+      el("tFecha").textContent  = `Del ${fmt.format(hoy)} al ${fmt.format(fin)} (válido 7 días)`;
+      el("tLugar").textContent  = lugar;
+      el("tCorreo").textContent = correo;
+      el("tTel").textContent    = telefono;
+      return;
+    }
+
+    // -------- 3) Si SÍ existe en Supabase, usarlo --------
+    const b = boletos[0];
+    console.log("[BOLETO] Boleto encontrado en BD:", b);
+
+    // Fechas: usamos valido_desde / valido_hasta si existen; si no, caemos en created_at
+    const inicioRaw = b.valido_desde || b.created_at;
+    const finRaw    = b.valido_hasta || b.valido_desde || b.created_at;
+
+    let inicio = new Date(inicioRaw);
+    let fin    = new Date(finRaw);
+
+    // Por seguridad, si no son válidas, calculamos 7 días a partir de hoy
+    if (isNaN(inicio.getTime())) {
+      inicio = new Date();
+    }
+    if (isNaN(fin.getTime())) {
+      fin = new Date(inicio);
+      fin.setDate(inicio.getDate() + 7);
+    }
 
     const fmt = new Intl.DateTimeFormat("es-MX",{ dateStyle:"long" });
 
+    const nombreFinal = b.participante_nombre || nombreQS || "—";
+    const premioFinal = b.premio_nombre || qs.get("premio") || "Entrada general";
+    const folioFinal  = b.folio || folioQS || "—";
+
     el("tTitle").textContent  = "MUCH · Premio";
-    el("tFolio").textContent  = "Folio: " + folio;
-    el("tNombre").textContent = nombre;
-    el("tPremio").textContent = premio;
-    el("tFecha").textContent  = `Del ${fmt.format(hoy)} al ${fmt.format(fin)} (válido 7 días)`;
-    el("tLugar").textContent  = lugar;
-    el("tCorreo").textContent = correo;
-    el("tTel").textContent    = telefono;
-
-    return;
-  }
-
-  // ✔ Si SÍ existe en Supabase, usarlo
-  const b = boletos[0];
-  console.log("[BOLETO] Boleto encontrado en BD:", b);
-
-  const hoy = new Date(b.created_at);
-  const fin = new Date(b.valido_hasta);
-
-  const fmt = new Intl.DateTimeFormat("es-MX",{ dateStyle:"long" });
-
-  el("tTitle").textContent  = "MUCH · Premio";
-  el("tFolio").textContent  = "Folio: " + (b.id || "—");
-  el("tNombre").textContent = b.participante_nombre || "—";
-  el("tPremio").textContent = b.premio_nombre || "Entrada general";
-  el("tFecha").textContent  = `Del ${fmt.format(hoy)} al ${fmt.format(fin)} (válido 7 días)`;
-  el("tLugar").textContent  = "MUCH";
-  el("tCorreo").textContent = qs.get("correo") || "—";
-  el("tTel").textContent    = qs.get("telefono") || "—";
-
-})();
-</script>
+    el("tFolio").textContent  = "Folio: " + folioFinal;
+    el("tNombre").textContent = nombreFinal;
+    el("tPremio").textContent = premioFinal;
+    el("tFecha").textContent  = `Del ${fmt.format(inicio)} al ${fmt.format(fin)} (válido 7 días)`;
+    el("tLugar").textContent  = "MUCH";
+    el("tCorreo").textContent = qs.get("correo")   || "—";
+    el("tTel").textContent    = qs.get("telefono") || "—";
+  })();
+  </script>
+</body>
+</html>
