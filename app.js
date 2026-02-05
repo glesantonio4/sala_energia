@@ -490,12 +490,13 @@ class UIManager{
     s.selected=null; s.locked=false;
 
     q.options.forEach((label,i)=>{
-      const col=document.createElement('div'); col.className='col-12 col-md-6';
+      // Ya no usamos col-12 col-md-6 para forzar lista vertical limpia
       const btn=document.createElement('button'); btn.type='button'; btn.className='option-btn';
       btn.setAttribute('data-index', i);
+      // Emoji azul (diamante) + texto
       btn.innerHTML = `<span class="emoji">🔹</span><span>${label}</span>`;
       btn.addEventListener('click', ()=> this.choose(i));
-      col.appendChild(btn); e.options.appendChild(col);
+      e.options.appendChild(btn);
     });
 
     e.nextBtn.textContent = s.idx===QUESTIONS.length-1 ? 'Finalizar 🎉' : 'Siguiente ➡️';

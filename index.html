@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -8,6 +9,7 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
   <canvas id="confetti" class="confetti-canvas"></canvas>
 
@@ -28,75 +30,95 @@
   <!-- ====== QUIZ ====== -->
   <main id="quizShell">
     <div class="quiz-card">
-      <div class="d-flex align-items-center gap-3 flex-wrap mb-2">
-        <div id="logoEmoji" class="logo">
-          <img src="Logo-Ag-14.png" alt="Agencia Digital Chiapas" class="logo__img small">
+
+      <!-- HEADER: Logos + Título -->
+      <div class="header-section text-center mb-3">
+        <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+          <img src="Logo-Ag-14.png" alt="Gobierno de Chiapas" class="logo-header logo-left">
+          <img src="logo-sata.png" alt="SATA" class="logo-header logo-right">
         </div>
-        <div class="flex-grow-1">
-          <h1 class="h4 mb-1">MUCH · Quiz Interactivo</h1>
-          <p class="tiny mb-0">Responde, aprende y ¡gana tu entrada! 🎁</p>
-        </div>
-        <!-- El texto inicial da igual: app.js lo sobrescribe con `Sala: ${SALA}` -->
-        <div id="pillSala" class="pill">Sala: Energía</div>
+
+        <h1 class="app-title mb-0">MUCH · Quiz Interactivo</h1>
+        <p class="app-subtitle mb-0">Responde, aprende y ¡gana tu entrada! 🎁</p>
       </div>
 
-      <div class="d-flex align-items-center justify-content-between mt-2 mb-2">
-        <div class="w-100 me-3">
-          <div class="progress" role="progressbar" aria-label="Progreso" aria-valuemin="0" aria-valuemax="100">
-            <div id="bar" class="progress-bar progress__bar" style="width:0%"></div>
+      <!-- CONTROLS: Sala | Sound | Timer (Centered Row) -->
+      <div class="controls-row d-flex justify-content-center align-items-center gap-3 mb-4">
+        <div id="pillSala" class="sala-pill">Sala: Energía</div>
+
+        <div class="d-flex align-items-center gap-2 bg-light px-3 py-1 rounded-pill border">
+          <div class="form-check form-switch mb-0 min-h-0">
+            <input class="form-check-input" type="checkbox" id="soundToggle" checked>
           </div>
+          <span id="timer" class="timer-text">⏰ 19:02</span>
         </div>
-        <div class="form-check form-switch">
-          <input class="form-check-input" type="checkbox" id="soundToggle" checked>
-          <label class="form-check-label tiny" for="soundToggle">Sonido</label>
-        </div>
-        <span id="timer" class="tiny ms-2">⏰ —:—</span>
+      </div>
+
+      <!-- Barra de progreso visual (opcional, dejamos fina arriba) -->
+      <div class="progress mb-4" style="height:4px;" role="progressbar">
+        <div id="bar" class="progress-bar" style="width:0%"></div>
       </div>
 
       <section id="quizView">
-        <div class="question-card">
-          <div class="d-flex align-items-center gap-2 mb-1">
-            <span class="badge text-bg-primary">
-              Pregunta <span id="qIndex">1</span>/<span id="qTotal">—</span>
+        <div class="question-container text-center">
+
+          <!-- Badge de Pregunta -->
+          <div class="d-inline-block mb-3">
+            <span class="badge-question">
+              PREGUNTA <span id="qIndex">1</span> DE <span id="qTotal">6</span>
             </span>
           </div>
-          <h2 id="qText" class="h5 mb-1">…</h2>
-          <p id="qDesc" class="tiny mb-3">…</p>
 
-          <div id="options" class="row gy-2 gx-2" role="group" aria-label="Opciones de respuesta"></div>
-          <div id="status" class="fw-bold mt-2" aria-live="polite"></div>
+          <!-- Pregunta -->
+          <h2 id="qText" class="question-text mb-4">¿...?</h2>
+          <p id="qDesc" class="d-none">...</p> <!-- Descripcion oculta o sutil -->
 
-          <div class="d-flex gap-2 mt-3 flex-wrap">
-            <button id="nextBtn" type="button" class="btn btn-primary">Siguiente ➡️</button>
+          <!-- Opciones (Vertical) -->
+          <div id="options" class="options-list d-flex flex-column gap-3 mb-4">
+            <!-- Se llenan con JS -->
           </div>
+
+          <div id="status" class="status-msg fw-bold mb-3" aria-live="polite"></div>
+
+          <!-- Botón Siguiente -->
+          <button id="nextBtn" type="button" class="btn btn-action w-100 py-3 rounded-4 fw-bold shadow-sm">
+            Siguiente ➡️
+          </button>
+
         </div>
 
-        <div class="d-flex justify-content-between align-items-center mt-3 tiny">
-          <div>⭐ Puntos: <strong id="points">0</strong></div>
-          <div id="hint" class="text-muted">Tip: solo puedes elegir una respuesta</div>
+        <div class="footer-info text-center mt-4">
+          <div class="points-pill">
+            ⭐ Puntos: <strong id="points">0</strong>
+          </div>
+          <p id="hint" class="tiny text-muted mt-2 mb-0">Tip: solo puedes elegir una respuesta</p>
+        </div>
+      </section>
+
+      <!-- VISTA FINAL (Resultados) -->
+      <section id="finalView" class="d-none text-center py-4">
+        <h2 id="finalTitle" class="h4 fw-bold mb-2">Resultados</h2>
+        <p id="finalMsg" class="text-secondary mb-4"></p>
+
+        <div class="result-score mb-4">
+          <div class="display-4 fw-bold text-primary mb-0"><span id="finalPoints">0</span></div>
+          <small class="text-uppercase tracking-wider">Puntos Totales</small>
+        </div>
+
+        <p class="mb-4">
+          Aciertos: <strong id="finalCorrect">0</strong> de <strong id="finalTotal">0</strong>
+        </p>
+
+        <div id="giftRow" class="d-flex flex-column gap-2 d-none">
+          <button id="openTicketBtn" class="btn btn-success w-100 py-3 rounded-4">🎟️ Ver mi boleto</button>
+          <button id="playAgainBtn1" class="btn btn-outline-secondary w-100 py-2 rounded-4">🔁 Jugar otra vez</button>
+        </div>
+
+        <div id="retryRow" class="d-flex flex-column gap-2 d-none">
+          <button id="playAgainBtn2" class="btn btn-primary w-100 py-3 rounded-4">🔁 Intentar de nuevo</button>
         </div>
       </section>
 
-      <section id="finalView" class="d-none">
-        <div class="question-card">
-          <h2 id="finalTitle" class="h5">Resultados</h2>
-          <p id="finalMsg" class="tiny mb-3"></p>
-
-          <p class="fs-5 fw-bold mb-1">⭐ Puntos: <span id="finalPoints">0</span></p>
-          <p class="tiny mb-3">
-            Aciertos: <strong id="finalCorrect">0</strong> de <strong id="finalTotal">0</strong>
-          </p>
-
-          <div id="giftRow" class="d-flex gap-2 flex-wrap d-none">
-            <button id="openTicketBtn" class="btn btn-success">🎟️ Ver mi boleto</button>
-            <button id="playAgainBtn1" class="btn btn-outline-secondary">🔁 Jugar otra vez</button>
-          </div>
-
-          <div id="retryRow" class="d-flex gap-2 flex-wrap d-none">
-            <button id="playAgainBtn2" class="btn btn-primary">🔁 Intentar de nuevo</button>
-          </div>
-        </div>
-      </section>
     </div>
   </main>
 
@@ -106,4 +128,5 @@
   <!-- Lógica del quiz + conexión a Supabase (vía import en app.js) -->
   <script src="app.js"></script>
 </body>
+
 </html>
