@@ -1,19 +1,21 @@
 /* ====== VARIABLES & THEME ====== */
-:root{
+:root {
   /* Energy Theme (Green/Blue/Yellow vibes) */
   --verde-500: #22c55e;
   --verde-600: #16a34a;
   --verde-700: #15803d;
-  
-  --azul-500: #3b82f6; 
+
+  --azul-500: #3b82f6;
   --azul-600: #2563eb;
-  
-  --primary: var(--verde-500); 
+
+  --primary: var(--verde-500);
   --primary-dark: var(--verde-600);
-  
-  --bg-gradient-start: #22c55e; /* Green */
-  --bg-gradient-end: #3b82f6;   /* Blue */
-  
+
+  --bg-gradient-start: #22c55e;
+  /* Green */
+  --bg-gradient-end: #3b82f6;
+  /* Blue */
+
   /* UI Colors */
   --card-bg: #ffffff;
   --text-main: #1f2937;
@@ -22,35 +24,48 @@
 
   --radius-card: 32px;
   --radius-btn: 16px;
-  
-  --shadow-card: 0 20px 40px -5px rgba(0,0,0,0.1);
-  --shadow-btn: 0 10px 20px -5px rgba(34,197,94,0.3); /* Green shadow */
+
+  --shadow-card: 0 20px 40px -5px rgba(0, 0, 0, 0.1);
+  --shadow-btn: 0 10px 20px -5px rgba(34, 197, 94, 0.3);
+  /* Green shadow */
 }
 
 body {
   margin: 0;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif; /* Modern font match */
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  /* Modern font match */
   min-height: 100vh;
-  background: linear-gradient(135deg, #4ade80, #3b82f6, #a855f7); /* Vibrant Energy Gradient */
+  background: linear-gradient(135deg, #4ade80, #3b82f6, #a855f7);
+  /* Vibrant Energy Gradient */
   background-size: 300% 300%;
   animation: gradientMove 15s ease infinite;
   color: var(--text-main);
   display: flex;
   justify-content: center;
-  align-items: center; /* Center card vertically */
+  align-items: center;
+  /* Center card vertically */
   padding: 1rem;
 }
 
 @keyframes gradientMove {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 /* === QUIZ SHELL === */
 #quizShell {
   width: 100%;
-  max-width: 480px; /* Mobile focused max-width */
+  max-width: 480px;
+  /* Mobile focused max-width */
   margin: auto;
 }
 
@@ -67,7 +82,9 @@ body {
 .quiz-card::after {
   content: "";
   position: absolute;
-  top: 0; left: 0; right: 0;
+  top: 0;
+  left: 0;
+  right: 0;
   height: 6px;
   background: linear-gradient(90deg, #22c55e, #3b82f6);
 }
@@ -77,8 +94,15 @@ body {
   height: 48px;
   object-fit: contain;
 }
-.logo-left { height: 42px; } /* Adjust sizing closer to ref */
-.logo-right { height: 32px; }
+
+.logo-left {
+  height: 42px;
+}
+
+/* Adjust sizing closer to ref */
+.logo-right {
+  height: 32px;
+}
 
 .app-title {
   font-size: 1.15rem;
@@ -111,13 +135,15 @@ body {
 }
 
 .timer-text {
-  color: #ef4444; /* Red for timer like reference */
+  color: #ef4444;
+  /* Red for timer like reference */
   font-variant-numeric: tabular-nums;
 }
 
 /* === QUESTION BADGE === */
 .badge-question {
-  background: #eff6ff; /* Light blue bg */
+  background: #eff6ff;
+  /* Light blue bg */
   color: var(--azul-600);
   font-size: 0.75rem;
   font-weight: 800;
@@ -136,7 +162,8 @@ body {
 }
 
 .question-text .emoji-icon {
-  margin-right: 8px; /* If emoji prefixed */
+  margin-right: 8px;
+  /* If emoji prefixed */
 }
 
 /* === OPTIONS LIST === */
@@ -148,12 +175,15 @@ body {
   font-size: 1rem;
   font-weight: 600;
   color: #374151;
-  text-align: left;
+  text-align: center;
+  /* Centered text */
   display: flex;
   align-items: center;
+  justify-content: center;
+  /* Centered flex content */
   gap: 12px;
   transition: all 0.2s ease;
-  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
   width: 100%;
 }
 
@@ -161,7 +191,7 @@ body {
   transform: translateY(-2px);
   border-color: var(--azul-500);
   background: #f8fafc;
-  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
 }
 
 .option-btn:disabled {
@@ -187,7 +217,8 @@ body {
   font-size: 0.8rem;
   color: var(--azul-500);
   background: #eff6ff;
-  width: 24px; height: 24px;
+  width: 24px;
+  height: 24px;
   border-radius: 6px;
   display: flex;
   align-items: center;
@@ -197,17 +228,20 @@ body {
 
 /* === ACTION BUTTON === */
 .btn-action {
-  background: var(--azul-500); /* Use Blue for Action per design ref, despite Energy green theme elsewhere */
+  background: var(--azul-500);
+  /* Use Blue for Action per design ref, despite Energy green theme elsewhere */
   color: white;
   border: none;
   font-size: 1.1rem;
   transition: transform 0.15s;
-  box-shadow: 0 10px 20px -5px rgba(59,130,246,0.4);
+  box-shadow: 0 10px 20px -5px rgba(59, 130, 246, 0.4);
 }
+
 .btn-action:hover {
   background: var(--azul-600);
   transform: scale(1.02);
 }
+
 .btn-action:active {
   transform: scale(0.98);
 }
@@ -217,17 +251,27 @@ body {
   border-top: 1px solid #f3f4f6;
   padding-top: 1.5rem;
 }
+
 .points-pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-weight: 700;
-  color: #ca8a04; /* Yellow/Gold */
+  color: #ca8a04;
+  /* Yellow/Gold */
   background: #fefce8;
   padding: 0.5rem 1rem;
   border-radius: 99px;
 }
 
 /* Confetti */
-.confetti-canvas{ position: fixed; inset: 0; pointer-events: none; z-index: 9999; }
-.hidden { display: none !important; }
+.confetti-canvas {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.hidden {
+  display: none !important;
+}
