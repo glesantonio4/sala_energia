@@ -343,8 +343,12 @@
       }
 
       try {
-        // 1. Insertar el GANADOR
+        // 1. Insertar el GANADOR con datos completos
         const folioNew = prizeData.folio || ('MUCH-' + Math.random().toString(36).substring(2, 8).toUpperCase());
+
+        // Calcular vigencia (30 días por defecto)
+        const validUntil = new Date();
+        validUntil.setDate(validUntil.getDate() + 30);
 
         const { data: winnerData, error: winnerError } = await supabaseClient
           .from('Ganadores')
@@ -353,7 +357,11 @@
             correo,
             telefono,
             folio: folioNew,
-            valido_desde: new Date().toISOString()
+            valido_desde: new Date().toISOString(),
+            valido_hasta: validUntil.toISOString(),
+            estatus: 'activo',
+            tipo_entrada: prizeData.label || 'Premio',
+            ubicacion: prizeData.lugar || 'Museo Chiapas'
           })
           .select('id')
           .single();
