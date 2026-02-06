@@ -338,54 +338,91 @@
     // ---------- Guardar en Supabase ----------
     async function guardarEnSupabase(nombre, correo, telefono, prizeData) {
       if (!supabaseClient) {
-        console.warn('[REGISTRO] supabaseClient es null; no se guarda en BD');
+        console.warn('[REGISTRO] supabaseClient es null');
         return;
       }
 
-      // 1) UPSERT de participante por correo (evita error 409)
-      let participanteNombre = nombre;
       try {
-        const { data, error } = await supabaseClient
-          .from('participantes')
-          .upsert(
-            { nombre, correo, telefono },
-            { onConflict: 'correo' }         // usa la unique key en correo si la tienes
-          )
-          .select('nombre')
-          .single();
+        // 1. Insertar el GANADOR
+        const folioNew = prizeData.folio || ('MUCH-' + Math.random().toString(36).substring(2, 8).toUpperCase());
 
-        if (error) {
-          console.error('Error al guardar participante:', error.message, error.details, error);
-        } else {
-          console.log('[REGISTRO] Participante insertado/actualizado:', data);
-          if (data?.nombre) participanteNombre = data.nombre;
-        }
-      } catch (err) {
-        console.error('Error inesperado participante:', err);
-      }
-
-      // 2) Insert de boleto
-      // Usamos solo columnas que sabemos que existen: participante_nombre, premio_nombre.
-      // (created_at lo rellena la BD con default; desde/valido_hasta también si tienen default)
-      const boletoPayload = {
-        participante_nombre: participanteNombre,
-        premio_nombre: prizeData.label || 'Entrada al Museo MUCH'
-      };
-
-      try {
-        const { data, error } = await supabaseClient
-          .from('boletos')
-          .insert(boletoPayload)
+        const { data: winnerData, error: winnerError } = await supabaseClient
+          .from('Ganadores')
+          .insert({
+            nombre,
+            correo,
+            telefono,
+            folio: folioNew,
+            valido_desde: new Date().toISOString()
+          })
           .select('id')
           .single();
 
-        if (error) {
-          console.error('Error al guardar boleto:', error.message, error.details, error);
-        } else {
-          console.log('[REGISTRO] Boleto insertado OK, id =', data.id);
+        if (winnerError) throw new Error('Error guardando Ganador: ' + winnerError.message);
+
+        const winnerID = winnerData.id;
+        console.log('[REGISTRO] Ganador guardado. ID:', winnerID);
+
+        // 2. Insertar o VINCLULAR el RECORD DEL QUIZ
+        // Intentamos usar el ID de la BD creado por app.js
+        let quizDbId = null;
+        try { quizDbId = localStorage.getItem('much_quiz_db_id'); } catch (_) { }
+
+        const quizRaw = localStorage.getItem('much_quiz_final_data');
+        let qData = {};
+        if (quizRaw) qData = JSON.parse(quizRaw);
+
+        if (quizDbId) {
+          // A) Si existe ID de quiz, lo ACTUALIZAMOS para vincularlo al participante real
+          // Y TAMBIEN aseguramos que el puntaje esté guardado (por si falló app.js)
+          console.log('[REGISTRO] Vinculando Quiz existente:', quizDbId);
+
+          const updatePayload = {
+            participante_id: winnerID,
+            estatus: 'finalizado'
+          };
+
+          // Si tenemos datos locales, los reforzamos
+          if (qData.puntaje_total !== undefined) {
+            updatePayload.puntaje_total = qData.puntaje_total;
+            updatePayload.num_correctas = qData.num_correctas;
+            updatePayload.num_preguntas = qData.num_preguntas;
+            updatePayload.finished_at = qData.finished_at || new Date().toISOString();
+          }
+
+          const { error: quizUpdateError } = await supabaseClient
+            .from('quizzes')
+            .update(updatePayload)
+            .eq('id', quizDbId);
+
+          if (quizUpdateError) console.error('Error vinculando quiz:', quizUpdateError);
+          else console.log('✅ Quiz vinculado al ganador correctamente.');
+
+        } else if (qData.sala_id) {
+          // B) Fallback: Si no hay ID de BD (se jugó offline o falló app.js), INSERTAMOS uno nuevo
+          // Esto garantiza que el ganador siempre tenga su registro de quiz
+          console.log('[REGISTRO] Insertando Quiz nuevo (Fallback)');
+          const quizPayload = {
+            sala_id: qData.sala_id,
+            participante_id: winnerID,
+            started_at: qData.started_at,
+            finished_at: qData.finished_at,
+            puntaje_total: qData.puntaje_total,
+            num_correctas: qData.num_correctas,
+            num_preguntas: qData.num_preguntas,
+            estatus: 'finalizado'
+          };
+
+          const { error: quizError } = await supabaseClient
+            .from('quizzes')
+            .insert(quizPayload);
+
+          if (quizError) console.error('Error guardando Quiz (Fallback):', quizError.message);
+          else console.log('✅ Quiz guardado correctamente linked a ganador (Fallback).');
         }
+
       } catch (err) {
-        console.error('Error inesperado boleto:', err);
+        console.error('Error general guardarEnSupabase:', err);
       }
     }
 

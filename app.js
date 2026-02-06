@@ -114,91 +114,41 @@ async function loadPreguntas() {
 }
 
 // ------------------------------------------------------------
-// 2. GESTIÓN DE JUGADORES Y PUNTAJES
 // ------------------------------------------------------------
-async function ensureParticipanteId() {
-  await initSupabase();
-
-  // 1. Verificamos si ya tenemos el ID numérico guardado
-  const existingId = sessionStorage.getItem("usuario_id");
-  if (existingId) {
-    console.log("ID recuperado de sesión:", existingId);
-    return existingId;
-  }
-
-  // 2. Si no hay ID, creamos uno nuevo
-  try {
-    console.log("Creando jugador temporal en Ganadores...");
-    const { data, error } = await supabase
-      .from('Ganadores')
-      .insert([
-        {
-          nombre: 'Jugador Anónimo',
-          correo: 'anonimo@quiz.temp',
-          telefono: '0000000000',
-          folio: 'TEMP-' + Math.floor(Math.random() * 100000),
-          valido_desde: getMexicoTime() // <--- HORA MÉXICO AQUÍ
-        }
-      ])
-      .select('id')
-      .single();
-
-    if (error) {
-      console.error("Error creando jugador:", error.message);
-      // Fallback de emergencia
-      const fallback = await supabase.from('Ganadores').select('id').limit(1);
-      return fallback.data?.[0]?.id || null;
-    }
-
-    console.log("Jugador temporal creado con ID:", data.id);
-    sessionStorage.setItem("usuario_id", data.id);
-    return data.id;
-
-  } catch (e) {
-    console.error("Error fatal en ensureParticipanteId:", e);
-    return null;
-  }
-}
+// 2. GESTIÓN DE PARTIDAS (DB TRACKING)
+// ------------------------------------------------------------
+// Se registra el intento en 'quizzes' SIEMPRE.
+// 'Ganadores' solo se toca si el usuario se registra al final.
 
 async function startQuizInDB() {
-  // 🔒 FRENO DE MANO: Si ya se está iniciando, NO hagas nada más.
   if (quizIniciando) return sessionStorage.getItem('much_current_quiz_id');
-  quizIniciando = true; // Activamos el bloqueo
+  quizIniciando = true;
 
   try {
     await initSupabase();
 
-    // 1. Verificar si ya existe un juego activo en sesión (Recarga de página)
+    // Reset de seguridad
+    sessionStorage.removeItem('much_quiz_final_data');
+
+    // 1. Recuperar Quiz Activo (reload)
     const juegoActivo = sessionStorage.getItem('much_current_quiz_id');
     if (juegoActivo) {
-      console.log("Juego recuperado de sesión:", juegoActivo);
-      // Importante: No ponemos quizIniciando = false aquí porque ya tenemos ID
+      // Validar si es reciente? (Opcional)
       return juegoActivo;
     }
 
-    // Obtenemos IDs necesarios
-    const sala_id = SALA_ENTRADA_ID;
-    const participante_id = await ensureParticipanteId();
-
-    if (!participante_id) {
-      console.error("❌ No se pudo obtener ID de participante.");
-      quizIniciando = false; // Soltamos el freno si falla
-      return null;
-    }
-
-    // 2. Preparamos datos con HORA EXACTA
+    // 2. Insertar nuevo intento (participante_id = NULL)
     const payload = {
-      sala_id: sala_id,
-      participante_id: participante_id,
-      started_at: getMexicoTime(), // <--- HORA MÉXICO AQUÍ
+      sala_id: SALA_ENTRADA_ID,
+      participante_id: null, // Se vinculará en registro.html si gana
+      started_at: getMexicoTime(),
       num_preguntas: NUM_QUESTIONS,
       puntaje_total: 0,
       num_correctas: 0,
       estatus: 'activo'
     };
 
-    console.log("Guardando partida nueva...");
-
+    console.log("Guardando intento en BD...");
     const { data, error } = await supabase
       .from('quizzes')
       .insert(payload)
@@ -206,45 +156,66 @@ async function startQuizInDB() {
       .single();
 
     if (error) {
-      console.error("❌ Error Supabase:", error.message);
-      quizIniciando = false; // Soltamos el freno si falla
+      console.error("❌ Error Supabase (Start):", error.message);
+      quizIniciando = false;
+      // Fallback: Modo Local
+      startQuizLocal();
       return null;
     }
 
-    console.log("✅ Partida iniciada. ID:", data.id);
+    console.log("✅ Intento iniciado. ID:", data.id);
     sessionStorage.setItem('much_current_quiz_id', data.id);
-    // Nota: Mantenemos quizIniciando = true un momento más o lo dejamos así 
-    // porque el juego ya empezó y no queremos otro start.
     return data.id;
 
   } catch (e) {
     console.error("Excepción al iniciar quiz:", e);
-    quizIniciando = false; // Soltamos el freno por si quieren reintentar
+    quizIniciando = false;
+    startQuizLocal();
     return null;
   }
 }
 
 async function endQuizInDB({ puntaje_total, num_correctas, num_preguntas }) {
+  // Guardamos local también por si acaso (para registro.html fallback)
+  saveQuizResultLocal({ puntaje_total, num_correctas, num_preguntas });
+
   try {
     await initSupabase();
     const quizId = sessionStorage.getItem('much_current_quiz_id');
     if (!quizId) return;
 
-    console.log(`🏁 Guardando final. Puntos: ${puntaje_total}`);
+    console.log(`🏁 Finalizando intento ${quizId}...`);
 
     const { error } = await supabase.from('quizzes').update({
-      puntaje_total: puntaje_total, // Aquí viajan tus 50 puntos
-      num_correctas: num_correctas, // Aquí viajan tus 5 correctas
+      puntaje_total: puntaje_total,
+      num_correctas: num_correctas,
       num_preguntas: num_preguntas,
-      finished_at: getMexicoTime(), // <--- HORA MÉXICO AQUÍ
+      finished_at: getMexicoTime(),
       estatus: 'finalizado'
     }).eq('id', quizId);
 
-    if (error) console.error("Error al finalizar:", error.message);
-    else console.log("✅ Resultados guardados con éxito.");
+    if (error) console.error("Error al finalizar (DB):", error.message);
+    else console.log("✅ Intento actualizado en BD.");
 
-  } catch (e) { console.warn(e); }
+  } catch (e) { console.warn('Error endQuizInDB:', e); }
 }
+
+// Fallback Functions (mantenidas)
+function startQuizLocal() {
+  if (sessionStorage.getItem('much_quiz_start')) return;
+  const startTime = getMexicoTime();
+  sessionStorage.setItem('much_quiz_start', startTime);
+}
+function saveQuizResultLocal(data) {
+  const startTime = sessionStorage.getItem('much_quiz_start') || getMexicoTime();
+  const quizData = { ...data, sala_id: SALA_ENTRADA_ID, started_at: startTime, finished_at: getMexicoTime() };
+  localStorage.setItem('much_quiz_final_data', JSON.stringify(quizData));
+
+  // Guardamos el ID de BD para que registro.html pueda usarlo
+  const dbId = sessionStorage.getItem('much_current_quiz_id');
+  if (dbId) localStorage.setItem('much_quiz_db_id', dbId);
+}
+
 
 /* =================== Clases UI =================== */
 class SoundFX {
@@ -386,10 +357,20 @@ class UIManager {
     if (s.idx >= QUESTIONS.length) {
       const allCorrect = s.correct === QUESTIONS.length;
 
-      // --- CORRECCIÓN FINAL: GUARDAR PUNTAJE ---
+      // --- CORRECCIÓN FINAL: GUARDAR PUNTAJE EN DB Y LOCAL ---
       // Calculamos 10 puntos por cada acierto
       const puntajeFinal = s.correct * 10;
 
+      // 1. Guardar localmente (backup para registro.html)
+      saveQuizResultLocal({
+        puntaje_total: puntajeFinal,
+        num_correctas: s.correct,
+        num_preguntas: QUESTIONS.length
+      });
+
+      // 2. Actualizar intento en BD (quizzes)
+      // No usamos await aquí para no bloquear la UI si la red es lenta, 
+      // pero idealmente debería ser rápido.
       endQuizInDB({
         puntaje_total: puntajeFinal,
         num_correctas: s.correct,
@@ -399,7 +380,8 @@ class UIManager {
       if (allCorrect) {
         const prize = this.prizeMgr.random();
         this.currentPrize = prize;
-        this.redirectToRegistration();
+        // Damos un pequeño margen para que el update viaje antes del redirect
+        setTimeout(() => this.redirectToRegistration(), 500);
         return;
       } else {
         e.quizView.classList.add('d-none');
@@ -511,7 +493,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const start = async () => {
     try {
       await loadPreguntas(); // Carga el JSON local
-      await startQuizInDB(); // Inicia sesión en BD
+      startQuizInDB(); // Inicia sesión en BD (o fallback local)
       if (welcome) welcome.classList.add('hidden');
       if (quizShell) quizShell.classList.remove('hidden');
       new UIManager({ elements, sound, confetti, prizeMgr });
