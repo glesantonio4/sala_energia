@@ -226,6 +226,15 @@ body {
   flex-shrink: 0;
 }
 
+/* Ensure text span also centers if it wraps */
+.option-btn span:not(.emoji) {
+  text-align: center;
+  flex: 1;
+  /* Allow text to take space but respect flex center of parent */
+  display: flex;
+  justify-content: center;
+}
+
 /* === ACTION BUTTON === */
 .btn-action {
   background: var(--azul-500);

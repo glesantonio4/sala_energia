@@ -424,7 +424,7 @@ class UIManager {
     s.selected = null; s.locked = false;
 
     q.options.forEach((label, i) => {
-      const col = document.createElement('div'); col.className = 'col-12 col-md-6';
+      const col = document.createElement('div'); col.className = 'col-12';
       const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'option-btn';
       btn.setAttribute('data-index', i);
       btn.innerHTML = `<span class="emoji">🔹</span><span>${label}</span>`;
