@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Validación Entrada MUCH</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            background: #0f172a;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .card {
+            background: #1e293b;
+            padding: 30px;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 400px;
+            border: 1px solid #334155;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+        }
+
+        h1 {
+            color: #22d3ee;
+            margin: 0 0 20px 0;
+        }
+
+        .status {
+            font-size: 22px;
+            font-weight: 900;
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .valid {
+            background: #22c55e;
+            color: #fff;
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.4);
+        }
+
+        .invalid {
+            background: #ef4444;
+            color: #fff;
+        }
+
+        .used {
+            background: #f59e0b;
+            color: #fff;
+        }
+
+        .info {
+            text-align: left;
+            background: #0f172a;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #334155;
+        }
+
+        .info p {
+            margin: 8px 0;
+            color: #cbd5e1;
+            font-size: 14px;
+        }
+
+        .label {
+            color: #64748b;
+            font-size: 11px;
+            text-transform: uppercase;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        button {
+            padding: 16px;
+            border-radius: 12px;
+            border: none;
+            font-weight: 800;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            transition: transform 0.1s;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .btn-approve {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white;
+            box-shadow: 0 4px 15px rgba(34, 197, 94, 0.4);
+            border: 1px solid #4ade80;
+        }
+
+        .loader {
+            font-size: 18px;
+            color: #94a3b8;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="card">
+        <h1>👮 Acceso MUCH</h1>
+
+        <div id="loader" class="loader">Iniciando sistema...</div>
+
+        <div id="resultArea" style="display:none;">
+            <div id="statusBox" class="status">...</div>
+            <div class="info" id="details"></div>
+            <button id="btnCanjear" class="btn-approve" style="display:none;">
+                ✅ VALIDAR ENTRADA
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Configuración
+        const SUPABASE_URL = 'https://qwgaeorsymfispmtsbut.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3Z2Flb3JzeW1maXNwbXRzYnV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzODcyODUsImV4cCI6MjA3Nzk2MzI4NX0.FThZIIpz3daC9u8QaKyRTpxUeW0v4QHs5sHX2s1U1eo';
+
+        // Inicializar cliente (usando la variable global 'supabase')
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const loader = document.getElementById('loader');
+        const resultArea = document.getElementById('resultArea');
+        const statusBox = document.getElementById('statusBox');
+        const details = document.getElementById('details');
+        const btnCanjear = document.getElementById('btnCanjear');
+
+        // 1. Obtener ID de la URL (soporta ?folio=... o ?ticket=...)
+        const params = new URLSearchParams(window.location.search);
+        const folioBoleto = params.get('folio') || params.get('ticket');
+
+        // Cambiar mensaje inicial para confirmar que el JS corre
+        loader.textContent = "Buscando boleto...";
+
+        if (!folioBoleto) {
+            loader.innerHTML = "⚠️ <b>Esperando escaneo...</b><br><br><span style='font-size:14px'>Escanea un QR para validar.</span>";
+        } else {
+            verificarBoleto(folioBoleto);
+        }
+
+        async function verificarBoleto(id) {
+            try {
+                loader.textContent = "Consultando base de datos...";
+
+                // Consultar tabla 'Ganadores' (asegúrate que exista en Supabase)
+                const { data, error } = await sb
+                    .from('Ganadores')
+                    .select('*')
+                    .eq('folio', id)
+                    .single();
+
+                loader.style.display = 'none';
+                resultArea.style.display = 'block';
+
+                if (error || !data) {
+                    statusBox.textContent = '❌ NO EXISTE';
+                    statusBox.className = 'status invalid';
+                    details.innerHTML = `<p>El folio <b>${id}</b> no se encuentra registrado.</p>`;
+                    return;
+                }
+
+                // --- Inicio: Captura de Geolocalización (fire-and-forget) ---
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(async (position) => {
+                        const { latitude, longitude } = position.coords;
+                        const locationString = `${latitude}, ${longitude}`;
+                        console.log('Geolocalización capturada:', locationString);
+
+                        try {
+                            const { error: geoError } = await sb
+                                .from('Ganadores')
+                                .update({ ubicacion: locationString })
+                                .eq('folio', id);
+
+                            if (geoError) {
+                                console.error('Error al guardar geolocalización en Supabase:', geoError.message);
+                            } else {
+                                console.log('Geolocalización guardada para el folio:', id);
+                            }
+                        } catch (e) {
+                            console.error('Error inesperado al intentar guardar geolocalización:', e.message);
+                        }
+                    }, (err) => {
+                        console.warn(`No se pudo obtener la geolocalización: ${err.message}`);
+                    }, {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    });
+                } else {
+                    console.warn('Geolocalización no soportada en este navegador.');
+                }
+                // --- Fin: Captura de Geolocalización ---
+
+                // Cálculos de fecha
+                const fechaLimite = new Date(data.valido_hasta);
+                const hoy = new Date();
+                const estaVencido = hoy > fechaLimite;
+
+                // Mostrar información
+                details.innerHTML = `
+          <span class="label">Participante</span>
+          <p style="font-size:18px; color:white; font-weight:bold">${data.nombre || 'Sin nombre'}</p>
+          <span class="label">Folio</span>
+          <p style="font-family:monospace; color:#22d3ee; font-size:16px">${data.folio}</p>
+          <span class="label">Vence</span>
+          <p>${fechaLimite.toLocaleDateString('es-MX')}</p>
+        `;
+
+                // Lógica de validación (Semáforo)
+                if (data.estatus === 'canjeado') {
+                    // YA SE USÓ
+                    statusBox.textContent = '⚠️ YA USADO';
+                    statusBox.className = 'status used';
+                    details.innerHTML += `<p style="color:#f59e0b; font-weight:bold; margin-top:10px; border-top:1px solid #333; padding-top:10px">Este boleto ya fue validado antes.</p>`;
+                    btnCanjear.style.display = 'none';
+
+                } else if (estaVencido) {
+                    // FECHA PASADA
+                    statusBox.textContent = '⛔ CADUCADO';
+                    statusBox.className = 'status invalid';
+                    details.innerHTML += `<p style="color:#f87171; font-weight:bold; margin-top:10px;">Su vigencia terminó.</p>`;
+                    btnCanjear.style.display = 'none';
+
+                } else {
+                    // ACTIVO Y LISTO PARA VALIDAR
+                    statusBox.textContent = '✅ ACTIVO';
+                    statusBox.className = 'status valid';
+                    btnCanjear.style.display = 'block';
+                }
+
+                // Evento del botón
+                btnCanjear.onclick = async () => {
+                    if (!confirm(`¿Confirmar acceso para ${data.nombre}?`)) return;
+
+                    btnCanjear.disabled = true;
+                    btnCanjear.textContent = "Registrando...";
+
+                    const update = await sb
+                        .from('Ganadores')
+                        .update({ estatus: 'canjeado' })
+                        .eq('folio', id);
+
+                    if (update.error) {
+                        alert("Error al guardar: " + update.error.message);
+                        btnCanjear.disabled = false;
+                        btnCanjear.textContent = "✅ VALIDAR ENTRADA";
+                    } else {
+                        alert("¡Entrada validada con éxito!");
+                        window.location.reload();
+                    }
+                };
+
+            } catch (e) {
+                loader.textContent = "Error de conexión";
+                loader.style.color = "red";
+                console.error(e);
+                alert("Ocurrió un error: " + e.message);
+            }
+        }
+    </script>
+</body>
+
+</html>

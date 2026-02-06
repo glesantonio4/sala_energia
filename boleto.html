@@ -1,208 +1,423 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <title>Boleto Ganador · MUCH</title>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+
   <style>
-    :root{
-      --ink:#0b1220; --muted:#64748b; --turquesa:#06b6d4; --fucsia:#d946ef;
-      --paper:#ffffff; --paper-line:#e5e7eb; --chip-bg:#ecfeff; --chip-ink:#075985;
-    }
-    *{ box-sizing:border-box; }
-    html,body{ height:100%; overflow-x:hidden; }
-    img{ max-width:100%; height:auto; }
-    body{
-      margin:0;
-      font-family: system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
-      color:var(--ink);
-      background:
-        radial-gradient(1200px 800px at 20% 20%, rgba(255,255,255,.5), transparent 60%),
-        linear-gradient(135deg, #0ea5b9, #ec4899, #38bdf8, #f472b6);
-      background-size:200% 200%;
-      animation:bgmove 24s ease-in-out infinite;
-      display:flex; align-items:center; justify-content:center;
-      padding:
-        max(24px, env(safe-area-inset-top))
-        max(24px, env(safe-area-inset-right))
-        max(24px, env(safe-area-inset-bottom))
-        max(24px, env(safe-area-inset-left));
-    }
-    @keyframes bgmove{ 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
-
-    .ticket-shell{ width:min(920px, 96%); margin-inline:auto; }
-    .ticket-card{
-      background:var(--paper); border-radius:20px; box-shadow:0 24px 48px rgba(2,6,23,.18);
-      border:1px solid rgba(255,255,255,.4); padding:clamp(18px, 3vw, 28px);
-    }
-    .ticket-paper{
-      border:2px dashed var(--paper-line); border-radius:16px;
-      padding:clamp(18px, 3vw, 26px); position:relative; background:#fff;
+    :root {
+      /* Energy Theme Colors */
+      --ink: #0b1220;
+      --muted: #64748b;
+      --turquesa: #22c55e;
+      /* Green Energy */
+      --fucsia: #3b82f6;
+      /* Blue Energy */
+      --paper: #ffffff;
+      --paper-line: #e5e7eb;
+      --chip-bg: #ecfdf5;
+      --chip-ink: #047857;
+      --whatsapp: #25D366;
     }
 
-    /* CABECERA: grid 3 columnas (logo - centro - logo) */
-    .ticket-head{
-      display:grid;
-      grid-template-columns: auto 1fr auto;
-      grid-template-areas:
-        "logoL center logoR";
-      align-items:center; gap:12px; margin-bottom:10px;
-    }
-    .ticket-logo{
-      grid-area:auto;
-      width:140px; max-width:40vw; border-radius:15px; padding:6px; object-fit:contain;
-      background:#fff; border:1px solid #eef2ff; box-shadow:0 6px 16px rgba(6,182,212,.22);
-    }
-    .logo-left{ grid-area:logoL; }
-    .logo-right{ grid-area:logoR; }
-    .center{ grid-area:center; min-width:0; }
-
-    .ticket-title{
-      font-weight:900; letter-spacing:.3px; color:var(--fucsia);
-      font-size:clamp(18px, 2.4vw, 22px); margin:0;
-      line-height:1.15; overflow-wrap:anywhere;
-    }
-    .folio{
-      display:inline-flex; align-items:center; gap:8px; background:var(--chip-bg); color:var(--chip-ink);
-      font-weight:800; padding:6px 10px; border-radius:999px; border:1px solid #bae6fd;
-      margin-top:6px; font-size:.95rem; max-width:100%; white-space:normal; line-height:1.1;
+    * {
+      box-sizing: border-box;
     }
 
-    .rows{ margin-top:10px; border-top:1px solid var(--paper-line); padding-top:10px; }
-    .row{ display:flex; gap:12px; align-items:baseline; padding:8px 0; border-bottom:1px dashed #eef2ff; }
-    .row:last-child{ border-bottom:0; }
-    .label{ min-width:128px; color:var(--muted); font-weight:700; }
-    .value{ font-weight:700; overflow-wrap:anywhere; word-break:break-word; line-height:1.25; }
+    html,
+    body {
+      min-height: 100%;
+    }
 
-    .note{ margin-top:12px; background:#f8fafc; border:1px dashed #e2e8f0; color:#0f172a; padding:12px 14px; border-radius:12px; font-size:.95rem; }
-    .actions{ display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-start; margin-top:16px; }
-    .btn{ appearance:none; border:0; cursor:pointer; border-radius:12px; padding:10px 14px; font-weight:800; font-size:.95rem; display:inline-flex; align-items:center; gap:8px; text-decoration:none; }
-    .btn-print{ background:var(--turquesa); color:#fff; }
-    .btn-print:hover{ filter:brightness(1.05); }
-    .btn-link{ background:#fff; color:#0b1220; border:1px solid #e5e7eb; }
-    .muted{ color:var(--muted); font-weight:600; margin-top:10px; }
+    img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+    }
 
-    /* MÓVIL */
-    @media (max-width: 600px){
-      body{
-        padding:
-          max(12px, env(safe-area-inset-top))
-          max(12px, env(safe-area-inset-right))
-          max(12px, env(safe-area-inset-bottom))
-          max(12px, env(safe-area-inset-left));
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--ink);
+      background: radial-gradient(1200px 800px at 20% 20%, rgba(255, 255, 255, .5), transparent 60%), linear-gradient(135deg, #4ade80, #3b82f6, #a855f7);
+      background-size: 200% 200%;
+      animation: bgmove 24s ease-in-out infinite;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    @keyframes bgmove {
+      0% {
+        background-position: 0% 50%
       }
-      .ticket-shell{ width:100%; }
-      .ticket-card{ padding:14px; border-radius:16px; box-shadow:0 14px 28px rgba(2,6,23,.16); }
-      .ticket-paper{ padding:14px; border-radius:14px; }
 
-      /* cabecera: logos más contenidos y folio pasa debajo del título */
-      .ticket-logo{ width:96px; max-width:30vw; }
-      .ticket-head{
-        grid-template-columns: auto 1fr auto;
-        gap:10px;
+      50% {
+        background-position: 100% 50%
       }
-      .ticket-title{ font-size:clamp(17px, 5vw, 20px); }
-      .folio{ display:block; margin-top:6px; }
 
-      .row{ display:grid; grid-template-columns:1fr; gap:4px; padding:10px 0; }
-      .label{ min-width:0; font-size:.9rem; }
-      .value{ font-size:1rem; }
-      .actions .btn{ flex:1 1 100%; justify-content:center; padding:12px; font-size:1rem; }
+      100% {
+        background-position: 0% 50%
+      }
     }
 
-    /* IMPRESIÓN */
-    @media print{
-      html,body{ background:#fff !important; animation:none !important; }
-      body{ padding:0 !important; }
-      .ticket-shell{ width:100%; padding:0; margin:0; }
-      .ticket-card{ box-shadow:none; border:0; padding:0; }
-      .ticket-paper{ border-color:#cbd5e1; }
-      .actions, .muted{ display:none !important; }
-      @page{ size:A4; margin:14mm; }
+    .ticket-shell {
+      width: 100%;
+      max-width: 600px;
+      margin-inline: auto;
+    }
+
+    .ticket-card {
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(2, 6, 23, .15);
+      border: 1px solid rgba(255, 255, 255, .4);
+      padding: 10px;
+    }
+
+    .ticket-paper {
+      border: 2px dashed var(--paper-line);
+      border-radius: 12px;
+      padding: 16px 12px;
+      position: relative;
+      background: #fff;
+      overflow: hidden;
+    }
+
+    .ticket-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid #f1f5f9;
+      padding-bottom: 12px;
+    }
+
+    .ticket-logo {
+      width: 70px;
+      height: 70px;
+      object-fit: contain;
+      border-radius: 10px;
+      padding: 4px;
+      background: #fff;
+      border: 1px solid #eef2ff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .center {
+      flex: 1;
+      text-align: center;
+      min-width: 0;
+    }
+
+    .ticket-title {
+      font-weight: 800;
+      color: var(--fucsia);
+      font-size: 1.1rem;
+      margin: 0;
+      line-height: 1.1;
+    }
+
+    .folio {
+      display: inline-block;
+      background: var(--chip-bg);
+      color: var(--chip-ink);
+      font-weight: 700;
+      font-size: 0.75rem;
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: 1px solid #bae6fd;
+      margin-top: 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .rows {
+      margin-top: 8px;
+    }
+
+    .row {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 8px 0;
+      border-bottom: 1px dashed #eef2ff;
+    }
+
+    .label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .value {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--ink);
+      line-height: 1.3;
+    }
+
+    .qr-section {
+      display: flex;
+      justify-content: center;
+      margin: 20px 0 10px;
+    }
+
+    #qrcode {
+      padding: 8px;
+      background: white;
+      border: 2px solid #e5e7eb;
+      border-radius: 12px;
+    }
+
+    .qr-hint {
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+
+    .note {
+      background: #f8fafc;
+      border: 1px dashed #cbd5e1;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      text-align: center;
+      color: #475569;
+      margin-bottom: 16px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-direction: column;
+      margin-top: 20px;
+    }
+
+    .btn {
+      appearance: none;
+      border: 0;
+      cursor: pointer;
+      border-radius: 10px;
+      padding: 14px;
+      font-weight: 700;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      text-decoration: none;
+      width: 100%;
+      text-align: center;
+    }
+
+    .btn-print {
+      background: var(--turquesa);
+      color: #fff;
+    }
+
+    .btn-link {
+      background: #fff;
+      color: #0f172a;
+      border: 2px solid #e2e8f0;
+    }
+
+    .btn-whatsapp {
+      background: var(--whatsapp);
+      color: #fff;
+      box-shadow: 0 4px 10px rgba(37, 211, 102, 0.3);
+    }
+
+    @media (min-width: 600px) {
+      .actions {
+        flex-direction: row;
+      }
+
+      .btn {
+        width: auto;
+        flex: 1;
+      }
+    }
+
+    @media print {
+      .actions {
+        display: none;
+      }
+
+      .ticket-paper {
+        border: 2px solid #000;
+      }
+
+      body {
+        background: white;
+      }
     }
   </style>
 </head>
+
 <body>
   <div class="ticket-shell">
-    <div class="ticket-card">
+    <div class="ticket-card" id="boletoCaptura">
       <div class="ticket-paper">
         <div class="ticket-head">
-          <img class="ticket-logo logo-left" src="./logo-agencia.png" alt="Agencia">
+          <img class="ticket-logo" src="logo-sata.png" alt="SATA" crossorigin="anonymous"
+            onerror="this.style.display='none'">
           <div class="center">
             <h2 id="tTitle" class="ticket-title">MUCH · Premio</h2>
-            <div id="tFolio" class="folio">Folio: </div>
+            <div id="tFolio" class="folio">Cargando...</div>
           </div>
-          <img class="ticket-logo logo-right" src="./logo-much.png" alt="MUCH">
+          <img class="ticket-logo" src="logo-much.png" alt="MUCH" crossorigin="anonymous"
+            onerror="this.style.display='none'">
         </div>
 
         <div class="rows">
-          <div class="row"><div class="label">Beneficiario:</div><div id="tNombre" class="value">—</div></div>
-          <div class="row"><div class="label">Acceso:</div><div id="tPremio" class="value">—</div></div>
-          <div class="row"><div class="label">Validez:</div><div id="tFecha" class="value">—</div></div>
-          <div class="row"><div class="label">Ubicación:</div><div id="tLugar" class="value">MUCH</div></div>
-          <div class="row"><div class="label">Correo:</div><div id="tCorreo" class="value">—</div></div>
-          <div class="row"><div class="label">Teléfono:</div><div id="tTel" class="value">—</div></div>
+          <div class="row">
+            <div class="label">Beneficiario:</div>
+            <div id="tNombre" class="value">—</div>
+          </div>
+          <div class="row">
+            <div class="label">Acceso:</div>
+            <div id="tPremio" class="value">—</div>
+          </div>
+          <div class="row">
+            <div class="label">Vigencia:</div>
+            <div id="tFecha" class="value">—</div>
+          </div>
+          <div class="row">
+            <div class="label">Ubicación:</div>
+            <div id="tLugar" class="value">MUCH</div>
+          </div>
+          <div class="row">
+            <div class="label">Correo:</div>
+            <div id="tCorreo" class="value" style="word-break: break-all;">—</div>
+          </div>
+          <div class="row">
+            <div class="label">Teléfono:</div>
+            <div id="tTel" class="value">—</div>
+          </div>
         </div>
 
-        <div class="note">
-          Presenta este boleto en taquilla. Sujeto a disponibilidad y horarios del museo.
+        <div class="qr-section">
+          <div id="qrcode"></div>
         </div>
+        <p class="qr-hint">Presenta este código al personal para validar</p>
 
-        <div class="actions">
-          <button class="btn btn-print" onclick="window.print()">🖨️ Imprimir Boleto</button>
-          <a class="btn btn-link" href="index.html">↩️ Volver al inicio</a>
-        </div>
-
-        <div class="muted">Sugerencia: guarda o imprime este boleto. El folio es único.</div>
+        <div class="note">⚠️ Válido por una sola entrada. Sujeto a disponibilidad y horarios del museo.</div>
       </div>
+    </div>
+
+    <div class="actions">
+      <button id="btnShareImage" class="btn btn-whatsapp">📤 Compartir Boleto (Imagen)</button>
+      <button class="btn btn-print" onclick="window.print()">🖨️ Imprimir</button>
+      <a class="btn btn-link" href="index.html">🏠 Inicio</a>
     </div>
   </div>
 
   <script>
-  (function(){
-    const qs = new URLSearchParams(location.search);
+    (function () {
+      const qs = new URLSearchParams(location.search);
+      const el = (id) => document.getElementById(id);
+      const hoy = new Date(); const fin = new Date(hoy); fin.setDate(hoy.getDate() + 7);
+      const fmt = new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium' });
 
-    let prizeData = null;
-    try{
-      const raw = localStorage.getItem('much_quiz_prize');
-      if(raw) prizeData = JSON.parse(raw);
-    }catch(_){}
-
-    const nombreQS  = qs.get('nombre')   || '';
-    const correoQS  = qs.get('correo')   || '';
-    const telQS     = qs.get('telefono') || '';
-    const premioQS  = qs.get('premio')   || '';
-    const folioQS   = qs.get('folio')    || '';
-    const lugarQS   = qs.get('lugar')    || '';
-
-    const hoy = new Date();
-    const fin = new Date(hoy); fin.setDate(hoy.getDate() + 7);
-    const fmt = new Intl.DateTimeFormat('es-MX', { dateStyle: 'long' });
-    const fechaHoy = fmt.format(hoy);
-    const fechaFin = fmt.format(fin);
-
-    const nombre = nombreQS || '—';
-    const correo = correoQS || '—';
-    const tel    = telQS    || '—';
-    const premio = (prizeData?.label) || premioQS || 'Entrada general';
-    const folio  = (prizeData?.folio) || folioQS  || ('MUCH-' + Math.random().toString(36).substring(2,8).toUpperCase());
-    const lugar  = (prizeData?.lugar) || lugarQS  || 'MUCH';
-    const title  = (prizeData?.title) || 'MUCH · Premio';
-
-    const el = (id)=> document.getElementById(id);
-    el('tTitle').textContent  = title;
-    el('tFolio').textContent  = 'Folio: ' + folio;
-    el('tNombre').textContent = nombre;
-    el('tPremio').textContent = premio;
-    el('tFecha').textContent  = `Del ${fechaHoy} al ${fechaFin} (válido 7 días)`;
-    el('tLugar').textContent  = lugar;
-    el('tCorreo').textContent = correo;
-    el('tTel').textContent    = tel;
-  })();
+      el('tTitle').textContent = qs.get('titulo') || 'MUCH · Premio';
+      el('tFolio').textContent = qs.get('folio') || 'Folio: ...';
+      el('tNombre').textContent = qs.get('nombre') || '—';
+      el('tPremio').textContent = qs.get('premio') || 'Entrada General';
+      el('tFecha').textContent = `${fmt.format(hoy)} al ${fmt.format(fin)}`;
+      el('tLugar').innerHTML = qs.get('lugar') || 'Museo Chiapas';
+      el('tCorreo').textContent = qs.get('correo') || '—';
+      el('tTel').textContent = qs.get('telefono') || '—';
+    })();
   </script>
 
-  <!-- ✅ Nuevo: Supabase para asegurar que el boleto esté registrado -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      // 1. GENERAR QR
+      const params = new URLSearchParams(window.location.search);
+      const container = document.getElementById("qrcode");
+
+      const folio = params.get('folio') || params.get('ticket');
+
+      if (folio && container) {
+        // Detectamos si es local (para dev) o prod
+        const isLocal = window.location.href.includes('localhost') || window.location.href.includes('127.0.0.1');
+
+        // Ajustamos la URL base a 'sala_energia' para GitHub Pages
+        const baseUrl = isLocal
+          ? window.location.origin
+          : 'https://glesantonio4.github.io/sala_energia';
+
+        // Endpoint de validación
+        const validationUrl = `${baseUrl}/validar.html?folio=${folio}`;
+
+        console.log("QR apunta a:", validationUrl);
+
+        container.innerHTML = '';
+        new QRCode(container, {
+          text: validationUrl,
+          width: 128,
+          height: 128,
+          colorDark: "#000000",
+          colorLight: "#ffffff",
+          correctLevel: QRCode.CorrectLevel.M
+        });
+      } else {
+        container.innerHTML = '<span style="font-size:0.75rem;color:#94a3b8;">Código no disponible</span>';
+      }
+
+      // 2. COMPARTIR IMAGEN
+      const btnShare = document.getElementById('btnShareImage');
+      if (btnShare) {
+        btnShare.addEventListener('click', async () => {
+          const originalText = btnShare.textContent;
+          btnShare.textContent = 'Generando... 📸';
+          btnShare.disabled = true;
+          try {
+            const element = document.getElementById('boletoCaptura');
+            const canvas = await html2canvas(element, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+
+            canvas.toBlob(async (blob) => {
+              const file = new File([blob], "Boleto_MUCH.png", { type: "image/png" });
+
+              if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                try {
+                  await navigator.share({ files: [file], title: 'Mi Boleto MUCH', text: '¡Gané una entrada!' });
+                  btnShare.textContent = '¡Enviado!';
+                } catch (err) { downloadImage(blob); }
+              } else {
+                downloadImage(blob);
+                alert("Imagen descargada. Compártela manualmente.");
+              }
+              setTimeout(() => { btnShare.textContent = originalText; btnShare.disabled = false; }, 2000);
+            }, 'image/png');
+          } catch (err) {
+            console.error(err); alert("Error al crear imagen.");
+            btnShare.textContent = originalText; btnShare.disabled = false;
+          }
+        });
+      }
+
+      function downloadImage(blob) {
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'Boleto_MUCH.png'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      }
+    });
+  </script>
+
+  <!-- ✅ START: Supabase Logic (Preserved) -->
   <script type="module">
     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -214,37 +429,38 @@
     const qs = new URLSearchParams(location.search);
 
     let prizeData = null;
-    try{
+    try {
       const raw = localStorage.getItem('much_quiz_prize');
-      if(raw) prizeData = JSON.parse(raw);
-    }catch(_){}
+      if (raw) prizeData = JSON.parse(raw);
+    } catch (_) { }
 
-    const nombreRaw  = qs.get('nombre')   || '';
-    const correoRaw  = qs.get('correo')   || '';
-    const telRaw     = qs.get('telefono') || '';
-    const premioRaw  = qs.get('premio')   || '';
-    const folioRaw   = qs.get('folio')    || '';
+    const nombreRaw = qs.get('nombre') || '';
+    const correoRaw = qs.get('correo') || '';
+    const telRaw = qs.get('telefono') || '';
+    const premioLabel = (prizeData?.label) || qs.get('premio') || 'Entrada general';
+    const folioRaw = qs.get('folio') || '';
 
-    const nombre = nombreRaw.trim().replace(/\s+/g,' ');
+    // Si viene de prizeData, folio ya está. Si no, tomamos del QS.
+    const folio = (prizeData?.folio) || folioRaw || null;
+
+    const nombre = nombreRaw.trim().replace(/\s+/g, ' ');
     const correo = correoRaw.trim().toLowerCase();
     const telefono = telRaw.trim();
-    const premioLabel = (prizeData?.label) || premioRaw || 'Entrada general';
-    const folio  = (prizeData?.folio) || folioRaw  || null;
 
-    function addDays(date, days){
-      return new Date(date.getTime() + days*24*60*60*1000);
+    function addDays(date, days) {
+      return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
     }
 
-    async function upsertParticipante(nombre, correo, telefono){
+    async function upsertParticipante(nombre, correo, telefono) {
       if (!correo) return null;
-      try{
+      try {
         let { data, error } = await supabase
           .from('participantes')
           .select('id')
           .eq('correo', correo)
           .limit(1);
 
-        if (!error && data && data.length){
+        if (!error && data && data.length) {
           return data[0].id;
         }
 
@@ -254,93 +470,56 @@
           .select('id')
           .single());
 
-        if (error){
+        if (error) {
           console.warn('[boleto] Error insertando participante:', error.message);
           return null;
         }
         return data?.id || null;
-      }catch(e){
-        console.warn('[boleto] upsertParticipante error:', e?.message || e);
+      } catch (e) {
         return null;
       }
     }
 
-    async function getPremioId(premioLabel){
-      try{
+    async function getPremioId(label) {
+      try {
         let query = supabase.from('premios').select('id, nombre, tipo').limit(1);
+        const lower = (label || '').toLowerCase();
+        if (lower.includes('planetario')) query = query.eq('tipo', 'planetario');
+        else if (lower.includes('museo')) query = query.eq('tipo', 'museo');
+        else if (label) query = query.ilike('nombre', label);
 
-        const lower = (premioLabel || '').toLowerCase();
-        if (lower.includes('planetario')){
-          query = query.eq('tipo','planetario');
-        }else if (lower.includes('museo')){
-          query = query.eq('tipo','museo');
-        }else if (premioLabel){
-          query = query.ilike('nombre', premioLabel);
-        }
-
-        const { data, error } = await query;
-        if (error){
-          console.warn('[boleto] Error buscando premio:', error.message);
-          return null;
-        }
+        const { data } = await query;
         if (data && data.length) return data[0].id;
         return null;
-      }catch(e){
-        console.warn('[boleto] getPremioId error:', e?.message || e);
-        return null;
-      }
+      } catch (e) { return null; }
     }
 
-    async function ensureBoleto({ participante_id, folio, premioLabel }){
+    async function ensureBoleto({ participante_id, folio, premioLabel }) {
       if (!participante_id || !folio) return;
-      try{
-        // ¿Ya existe este folio?
-        let { data, error } = await supabase
-          .from('boletos')
-          .select('id')
-          .eq('folio', folio)
-          .limit(1);
-
-        if (!error && data && data.length){
-          return; // ya está
-        }
+      try {
+        let { data } = await supabase.from('boletos').select('id').eq('folio', folio).limit(1);
+        if (data && data.length) return;
 
         const hoy = new Date();
-        const desde = hoy.toISOString().slice(0,10);
-        const hasta = addDays(hoy, 7).toISOString().slice(0,10);
-
+        const desde = hoy.toISOString().slice(0, 10);
+        const hasta = addDays(hoy, 7).toISOString().slice(0, 10);
         const premio_id = await getPremioId(premioLabel);
 
-        const payload = {
-          participante_id,
-          folio,
-          valido_desde: desde,
-          valido_hasta: hasta
-        };
-
+        const payload = { participante_id, folio, valido_desde: desde, valido_hasta: hasta };
         if (premio_id) payload.premio_id = premio_id;
 
-        ({ error } = await supabase.from('boletos').insert(payload));
-        if (error){
-          console.warn('[boleto] Error creando boleto:', error.message);
-        }
-      }catch(e){
-        console.warn('[boleto] ensureBoleto error:', e?.message || e);
-      }
+        await supabase.from('boletos').insert(payload);
+      } catch (e) { }
     }
 
     (async () => {
-      try{
-        if (!folio) {
-          console.warn('[boleto] No hay folio, no se registra en BD.');
-          return;
-        }
+      try {
+        if (!folio) return;
         const participante_id = await upsertParticipante(nombre, correo, telefono);
         await ensureBoleto({ participante_id, folio, premioLabel });
-      }catch(e){
-        console.warn('[boleto] Error general conectando con BD:', e?.message || e);
-      }
+      } catch (e) { }
     })();
   </script>
 </body>
+
 </html>
