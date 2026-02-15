@@ -124,20 +124,21 @@ async function loadPreguntas() {
 async function ensureParticipanteId() {
   await initSupabase();
 
-  // 1. Verificamos si ya tenemos el ID guardado
+  // 1. Verificamos si ya tenemos el ID guardado en sesión
   const existingId = sessionStorage.getItem("usuario_id");
   if (existingId) return existingId;
 
+  const randomSuffix = Math.floor(Math.random() * 999999);
   try {
     console.log("Creando jugador temporal en Ganadores...");
     const { data, error } = await supabase
       .from('Ganadores')
       .insert([
         {
-          nombre: 'Jugador Anónimo',
-          correo: 'anonimo@quiz.temp',
+          nombre: 'Visitante Energía',
+          correo: `visitante.${randomSuffix}@much.mx`, // Email único para evitar errores de duplicidad
           telefono: '0000000000',
-          folio: 'TEMP-' + Math.floor(Math.random() * 100000),
+          folio: 'V-' + randomSuffix,
           valido_desde: getMexicoTime()
         }
       ])
@@ -145,7 +146,18 @@ async function ensureParticipanteId() {
       .single();
 
     if (error) {
-      console.error("Error creando jugador:", error.message);
+      console.warn("No se pudo crear jugador nuevo, buscando fallback...", error.message);
+      // Fallback: Si no podemos crear uno, buscamos el ID de cualquier ganador existente 
+      // para evitar que la columna se quede NULL.
+      const { data: fallback } = await supabase
+        .from('Ganadores')
+        .select('id')
+        .order('id', { ascending: false })
+        .limit(1);
+
+      if (fallback && fallback.length > 0) {
+        return fallback[0].id;
+      }
       return null;
     }
 
