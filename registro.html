@@ -7,7 +7,6 @@
   <title>Registro para obtener tu premio</title>
   <link rel="stylesheet" href="styles.css" />
 
-  <!-- Supabase JS (BASE MUCH) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
@@ -271,7 +270,6 @@
     </form>
   </div>
 
-  <!-- WELCOME MODAL -->
   <div id="welcomeModal" class="modal-overlay">
     <div class="modal-card">
       <span class="modal-icon">🎉</span>
@@ -297,6 +295,9 @@
 
     const qs = new URLSearchParams(location.search);
     const salaSlug = qs.get('sala') || 'energia';
+
+    // 🛡️ BLINDAJE NIVEL DIOS: Leer de la URL o sacarlo de la memoria PERMANENTE
+    const lugarDesdeURL = qs.get('lugar') || localStorage.getItem('much_lugar_seguro');
 
     // ---------- Validadores ----------
     const reNombre = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+(?:[ \t]+[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'.-]+){1,}$/;
@@ -346,9 +347,11 @@
         // 1. Insertar el GANADOR con datos completos
         const folioNew = prizeData.folio || ('MUCH-' + Math.random().toString(36).substring(2, 8).toUpperCase());
 
-        // Calcular vigencia (30 días por defecto)
         const validUntil = new Date();
         validUntil.setDate(validUntil.getDate() + 30);
+
+        // 🌟 NUEVO: ELEGIR QUÉ UBICACIÓN GUARDAR 🌟
+        const ubicacionFinal = lugarDesdeURL || prizeData.lugar || 'Museo Chiapas';
 
         const { data: winnerData, error: winnerError } = await supabaseClient
           .from('Ganadores')
@@ -361,7 +364,7 @@
             valido_hasta: validUntil.toISOString(),
             estatus: 'activo',
             tipo_entrada: prizeData.label || 'Premio',
-            ubicacion: prizeData.lugar || 'Museo Chiapas'
+            ubicacion: ubicacionFinal
           })
           .select('id')
           .single();
@@ -372,7 +375,6 @@
         console.log('[REGISTRO] Ganador guardado. ID:', winnerID);
 
         // 2. Insertar o VINCLULAR el RECORD DEL QUIZ
-        // Intentamos usar el ID de la BD creado por app.js
         let quizDbId = null;
         try { quizDbId = localStorage.getItem('much_quiz_db_id'); } catch (_) { }
 
@@ -381,8 +383,6 @@
         if (quizRaw) qData = JSON.parse(quizRaw);
 
         if (quizDbId) {
-          // A) Si existe ID de quiz, lo ACTUALIZAMOS para vincularlo al participante real
-          // Y TAMBIEN aseguramos que el puntaje esté guardado (por si falló app.js)
           console.log('[REGISTRO] Vinculando Quiz existente:', quizDbId);
 
           const updatePayload = {
@@ -390,7 +390,6 @@
             estatus: 'finalizado'
           };
 
-          // Si tenemos datos locales, los reforzamos
           if (qData.puntaje_total !== undefined) {
             updatePayload.puntaje_total = qData.puntaje_total;
             updatePayload.num_correctas = qData.num_correctas;
@@ -407,8 +406,6 @@
           else console.log('✅ Quiz vinculado al ganador correctamente.');
 
         } else if (qData.sala_id) {
-          // B) Fallback: Si no hay ID de BD (se jugó offline o falló app.js), INSERTAMOS uno nuevo
-          // Esto garantiza que el ganador siempre tenga su registro de quiz
           console.log('[REGISTRO] Insertando Quiz nuevo (Fallback)');
           const quizPayload = {
             sala_id: qData.sala_id,
@@ -458,14 +455,12 @@
         return;
       }
 
-      // Premio generado por el quiz (much_quiz_prize)
       let prizeData = null;
       try {
         const raw = localStorage.getItem('much_quiz_prize');
         if (raw) prizeData = JSON.parse(raw);
       } catch (_) { }
 
-      // Plan B si no hay nada en localStorage
       if (!prizeData) {
         const folio = 'MUCH-' + Math.random().toString(36).substring(2, 8).toUpperCase();
         prizeData = {
@@ -492,7 +487,6 @@
         console.error('Error guardando en Supabase:', err);
       }
 
-      // Parámetros para boleto.html
       const params = new URLSearchParams({
         nombre: nombre.trim().replace(/\s+/g, ' '),
         correo: correo.trim().toLowerCase(),
@@ -503,7 +497,6 @@
         sala: salaSlug
       });
 
-      // Evitar doble canje desde el mismo dispositivo
       try { localStorage.removeItem('much_quiz_prize'); } catch (_) { }
 
       window.location.href = 'boleto.html?' + params.toString();
@@ -523,15 +516,15 @@
       });
     });
 
-    // Modal Control
     const modal = document.getElementById('welcomeModal');
     const closeBtn = document.getElementById('closeModalBtn');
 
-    // Auto-show modal
     setTimeout(() => modal.classList.add('active'), 100);
 
-    // Close logic
     closeBtn.addEventListener('click', () => {
       modal.classList.remove('active');
     });
   </script>
+</body>
+
+</html>

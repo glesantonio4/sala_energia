@@ -1,6 +1,15 @@
 /* =================== Datos de Configuración =================== */
 const params = new URLSearchParams(location.search);
 const SALA = params.get('sala') || 'energia';
+
+// 🛡️ BLINDAJE NIVEL DIOS: Guardar en memoria PERMANENTE
+const LUGAR_EN_URL = params.get('lugar');
+if (LUGAR_EN_URL && LUGAR_EN_URL.trim() !== "") {
+  localStorage.setItem('much_lugar_seguro', LUGAR_EN_URL);
+}
+// Lo saca de la memoria (si no hay nada, pone Sin Especificar)
+const LUGAR_QR = localStorage.getItem('much_lugar_seguro') || 'Sin Especificar';
+
 const NUM_QUESTIONS = 6;
 // Función para mezclar arrays
 const shuffle = a => a.map(x => [Math.random(), x]).sort((p, q) => p[0] - q[0]).map(p => p[1]);
@@ -113,63 +122,8 @@ async function loadPreguntas() {
 }
 
 // ------------------------------------------------------------
-// ------------------------------------------------------------
 // 2. GESTIÓN DE PARTIDAS (DB TRACKING)
 // ------------------------------------------------------------
-
-/**
- * 🐆 ASEGURAR QUE EL PARTICIPANTE EXISTA
- * Si no hay un usuario en sesión, crea uno temporal "Jugador Anónimo".
- */
-async function ensureParticipanteId() {
-  await initSupabase();
-
-  // 1. Verificamos si ya tenemos el ID guardado en sesión
-  const existingId = sessionStorage.getItem("usuario_id");
-  if (existingId) return existingId;
-
-  const randomSuffix = Math.floor(Math.random() * 999999);
-  try {
-    console.log("Creando jugador temporal en Ganadores...");
-    const { data, error } = await supabase
-      .from('Ganadores')
-      .insert([
-        {
-          nombre: 'Visitante Energía',
-          correo: `visitante.${randomSuffix}@much.mx`, // Email único para evitar errores de duplicidad
-          telefono: '0000000000',
-          folio: 'V-' + randomSuffix,
-          valido_desde: getMexicoTime()
-        }
-      ])
-      .select('id')
-      .single();
-
-    if (error) {
-      console.warn("No se pudo crear jugador nuevo, buscando fallback...", error.message);
-      // Fallback: Si no podemos crear uno, buscamos el ID de cualquier ganador existente 
-      // para evitar que la columna se quede NULL.
-      const { data: fallback } = await supabase
-        .from('Ganadores')
-        .select('id')
-        .order('id', { ascending: false })
-        .limit(1);
-
-      if (fallback && fallback.length > 0) {
-        return fallback[0].id;
-      }
-      return null;
-    }
-
-    console.log("Jugador temporal creado con ID:", data.id);
-    sessionStorage.setItem("usuario_id", data.id);
-    return data.id;
-
-  } catch (e) {
-    console.error("Error fatal en ensureParticipanteId:", e);
-    return null;
-  }
-}
 
 async function startQuizInDB() {
   if (quizIniciando) return sessionStorage.getItem('much_current_quiz_id');
@@ -178,32 +132,22 @@ async function startQuizInDB() {
   try {
     await initSupabase();
 
-    // Reset de seguridad
+    sessionStorage.removeItem('much_current_quiz_id');
     sessionStorage.removeItem('much_quiz_final_data');
 
-    // 1. Validar si ya hay un juego activo en esta sesión
-    const juegoActivo = sessionStorage.getItem('much_current_quiz_id');
-    if (juegoActivo) {
-      return juegoActivo;
-    }
+    // 🌟 SE ESTABLECE EL ID MANUALMENTE
+    const ID_JUGADOR = 365;
 
-    // 2. Obtener un ID de participante válido (Nunca NULL)
-    const participante_id = await ensureParticipanteId();
-    if (!participante_id) {
-      console.error("No se pudo obtener ID de participante.");
-      quizIniciando = false;
-      return null;
-    }
-
-    // 2. Insertar nuevo intento vinculado al participante real o temporal
+    // Insertar nuevo intento
     const payload = {
       sala_id: SALA_ENTRADA_ID,
-      participante_id: participante_id, // <--- AQUÍ EVITAMOS QUE SALGA VACÍO
+      participante_id: ID_JUGADOR,
       started_at: getMexicoTime(),
       num_preguntas: NUM_QUESTIONS,
       puntaje_total: 0,
       num_correctas: 0,
-      estatus: 'activo'
+      estatus: 'activo',
+      ubicacion: LUGAR_QR // 🌟 SE MANDA LA MEMORIA PERMANENTE
     };
 
     console.log("Guardando intento en BD...");
@@ -222,11 +166,9 @@ async function startQuizInDB() {
 
     console.log("✅ Intento iniciado. ID:", data.id);
 
-    // Guardamos en SessionStorage (para uso interno del quiz)
     sessionStorage.setItem('much_current_quiz_id', data.id);
-
-    // ⚠️ CRUCIAL: Guardamos en LocalStorage con la clave que busca registro.html
     localStorage.setItem('much_quiz_db_id', String(data.id));
+    localStorage.setItem('much_quiz_last_quiz_id', String(data.id));
 
     return data.id;
 
@@ -239,7 +181,6 @@ async function startQuizInDB() {
 }
 
 async function endQuizInDB({ puntaje_total, num_correctas, num_preguntas }) {
-  // Guardamos localmente para tener respaldo
   saveQuizResultLocal({ puntaje_total, num_correctas, num_preguntas });
 
   try {
@@ -258,9 +199,46 @@ async function endQuizInDB({ puntaje_total, num_correctas, num_preguntas }) {
     }).eq('id', quizId);
 
     if (error) console.error("Error al finalizar (DB):", error.message);
-    else console.log("✅ Intento actualizado en BD.");
+    else console.log("✅ Intento actualizado en BD al finalizar.");
 
   } catch (e) { console.warn('Error endQuizInDB:', e); }
+}
+
+// ------------------------------------------------------------
+// 🌟 NUEVO: FUNCIÓN PARA COMPROBAR LÍMITE DE BOLETOS DIARIOS
+// ------------------------------------------------------------
+async function checkLimiteBoletos() {
+  try {
+    await initSupabase();
+
+    const hoy = new Date();
+    const offsetMexico = hoy.getTimezoneOffset() * 60000;
+    const localTime = new Date(hoy.getTime() - offsetMexico);
+    const fechaHoyStr = localTime.toISOString().split('T')[0];
+
+    const inicioDia = `${fechaHoyStr}T00:00:00.000Z`;
+    const finDia = `${fechaHoyStr}T23:59:59.999Z`;
+
+    const { count, error } = await supabase
+      .from('quizzes')
+      .select('*', { count: 'exact', head: true })
+      .eq('sala_id', SALA_ENTRADA_ID)
+      .gte('finished_at', inicioDia)
+      .lte('finished_at', finDia)
+      .eq('num_correctas', NUM_QUESTIONS);
+
+    if (error) {
+      console.error("Error al checar límite de boletos:", error);
+      return false;
+    }
+
+    console.log(`Boletos entregados hoy en esta sala: ${count}`);
+    return count >= 3;
+
+  } catch (e) {
+    console.error("Excepción en checkLimiteBoletos:", e);
+    return false;
+  }
 }
 
 // Fallback Functions
@@ -274,14 +252,14 @@ function saveQuizResultLocal(data) {
   const startTime = sessionStorage.getItem('much_quiz_start') || getMexicoTime();
   const quizData = { ...data, sala_id: SALA_ENTRADA_ID, started_at: startTime, finished_at: getMexicoTime() };
 
-  // Guardamos datos para registro.html (por si la BD falló antes)
   localStorage.setItem('much_quiz_final_data', JSON.stringify(quizData));
 
-  // Reforzamos el ID en localStorage
   const dbId = sessionStorage.getItem('much_current_quiz_id');
-  if (dbId) localStorage.setItem('much_quiz_db_id', dbId);
+  if (dbId) {
+    localStorage.setItem('much_quiz_db_id', dbId);
+    localStorage.setItem('much_quiz_last_quiz_id', dbId);
+  }
 }
-
 
 /* =================== Clases UI =================== */
 class SoundFX {
@@ -399,10 +377,12 @@ class UIManager {
       emoji: this.currentPrize.emoji
     };
     localStorage.setItem('much_quiz_prize', JSON.stringify(prizeData));
-    window.location.href = 'registro.html';
+
+    // Pasamos el parámetro a registro
+    window.location.href = 'registro.html' + window.location.search;
   }
 
-  render() {
+  async render() {
     const s = this.state, { e } = this;
     const pct = Math.min(100, (s.idx / QUESTIONS.length * 100));
     e.bar.style.width = pct + '%';
@@ -421,12 +401,16 @@ class UIManager {
     }
 
     if (s.idx >= QUESTIONS.length) {
-      const allCorrect = s.correct === QUESTIONS.length;
+      e.quizView.classList.add('d-none');
+      e.finalView.classList.remove('d-none');
+      e.finalTitle.textContent = 'Verificando resultados...';
+      e.finalMsg.textContent = 'Por favor espera.';
+      e.giftRow.classList.add('d-none');
+      e.retryRow.classList.add('d-none');
 
-      // 10 puntos por acierto
+      const allCorrect = s.correct === QUESTIONS.length;
       const puntajeFinal = s.correct * 10;
 
-      // Guardamos en local y DB
       saveQuizResultLocal({
         puntaje_total: puntajeFinal,
         num_correctas: s.correct,
@@ -439,21 +423,32 @@ class UIManager {
         num_preguntas: QUESTIONS.length
       });
 
+      e.finalPoints.textContent = s.points.toString();
+      e.finalCorrect.textContent = s.correct.toString();
+      e.finalTotal.textContent = QUESTIONS.length.toString();
+
       if (allCorrect) {
-        const prize = this.prizeMgr.random();
-        this.currentPrize = prize;
-        setTimeout(() => this.redirectToRegistration(), 500);
+        const limiteAlcanzado = await checkLimiteBoletos();
+
+        if (limiteAlcanzado) {
+          e.finalTitle.textContent = '¡Felicidades, eres un experto! 🧠';
+          e.finalMsg.innerHTML = '<span style="color: #e6007a; font-weight: bold;">Lo sentimos, los boletos para esta sala se han agotado por hoy.</span><br>¡Vuelve a intentarlo mañana!';
+          e.retryRow.classList.remove('d-none');
+        } else {
+          const prize = this.prizeMgr.random();
+          this.currentPrize = prize;
+
+          e.finalTitle.textContent = '¡Felicidades!';
+          e.finalMsg.textContent = '¡Has ganado un boleto!';
+          e.giftRow.classList.remove('d-none');
+
+          setTimeout(() => this.redirectToRegistration(), 500);
+        }
         return;
       } else {
-        e.quizView.classList.add('d-none');
-        e.finalView.classList.remove('d-none');
         e.finalTitle.textContent = 'Buen intento 👀';
         e.finalMsg.textContent = 'Sigue explorando el museo.';
-        e.giftRow.classList.add('d-none');
         e.retryRow.classList.remove('d-none');
-        e.finalPoints.textContent = s.points.toString();
-        e.finalCorrect.textContent = s.correct.toString();
-        e.finalTotal.textContent = QUESTIONS.length.toString();
         return;
       }
     }
@@ -554,7 +549,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const start = async () => {
     try {
       await loadPreguntas();
-      startQuizInDB(); // Inicia sesión en BD (con el ID de Visitante)
+      startQuizInDB();
       if (welcome) welcome.classList.add('hidden');
       if (quizShell) quizShell.classList.remove('hidden');
       new UIManager({ elements, sound, confetti, prizeMgr });
