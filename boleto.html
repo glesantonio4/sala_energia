@@ -12,17 +12,14 @@
 
   <style>
     :root {
-      /* Energy Theme Colors */
       --ink: #0b1220;
       --muted: #64748b;
-      --turquesa: #22c55e;
-      /* Green Energy */
-      --fucsia: #3b82f6;
-      /* Blue Energy */
+      --turquesa: #06b6d4;
+      --fucsia: #d946ef;
       --paper: #ffffff;
       --paper-line: #e5e7eb;
-      --chip-bg: #ecfdf5;
-      --chip-ink: #047857;
+      --chip-bg: #ecfeff;
+      --chip-ink: #075985;
       --whatsapp: #25D366;
     }
 
@@ -45,7 +42,7 @@
       margin: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       color: var(--ink);
-      background: radial-gradient(1200px 800px at 20% 20%, rgba(255, 255, 255, .5), transparent 60%), linear-gradient(135deg, #4ade80, #3b82f6, #a855f7);
+      background: radial-gradient(1200px 800px at 20% 20%, rgba(255, 255, 255, .5), transparent 60%), linear-gradient(135deg, #0ea5b9, #ec4899, #38bdf8, #f472b6);
       background-size: 200% 200%;
       animation: bgmove 24s ease-in-out infinite;
       display: flex;
@@ -95,21 +92,33 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 8px;
+      gap: 12px;
       margin-bottom: 16px;
       border-bottom: 1px solid #f1f5f9;
-      padding-bottom: 12px;
+      padding: 8px 8px 14px;
+    }
+
+    .logo-box {
+      width: 80px;
+      height: 80px;
+      min-width: 80px;
+      flex-shrink: 0;
+      background: #fff;
+      border: 1px solid #eef2ff;
+      border-radius: 10px;
+      padding: 6px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .ticket-logo {
-      width: 70px;
-      height: 70px;
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
       object-fit: contain;
-      border-radius: 10px;
-      padding: 4px;
-      background: #fff;
-      border: 1px solid #eef2ff;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
     }
 
     .center {
@@ -144,6 +153,9 @@
 
     .rows {
       margin-top: 8px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0 16px;
     }
 
     .row {
@@ -152,6 +164,10 @@
       gap: 2px;
       padding: 8px 0;
       border-bottom: 1px dashed #eef2ff;
+    }
+
+    .row-full {
+      grid-column: 1 / -1;
     }
 
     .label {
@@ -273,18 +289,18 @@
     <div class="ticket-card" id="boletoCaptura">
       <div class="ticket-paper">
         <div class="ticket-head">
-          <img class="ticket-logo" src="logo-sata.png" alt="SATA" crossorigin="anonymous"
-            onerror="this.style.display='none'">
+          <div class="logo-box"><img class="ticket-logo" src="logo-sata.png" alt="SATA" crossorigin="anonymous"
+              onerror="this.parentElement.style.display='none'"></div>
           <div class="center">
             <h2 id="tTitle" class="ticket-title">MUCH · Premio</h2>
             <div id="tFolio" class="folio">Cargando...</div>
           </div>
-          <img class="ticket-logo" src="logo-much.png" alt="MUCH" crossorigin="anonymous"
-            onerror="this.style.display='none'">
+          <div class="logo-box"><img class="ticket-logo" src="logo-much.png" alt="MUCH" crossorigin="anonymous"
+              onerror="this.parentElement.style.display='none'"></div>
         </div>
 
         <div class="rows">
-          <div class="row">
+          <div class="row row-full">
             <div class="label">Beneficiario:</div>
             <div id="tNombre" class="value">—</div>
           </div>
@@ -301,12 +317,12 @@
             <div id="tLugar" class="value">MUCH</div>
           </div>
           <div class="row">
-            <div class="label">Correo:</div>
-            <div id="tCorreo" class="value" style="word-break: break-all;">—</div>
-          </div>
-          <div class="row">
             <div class="label">Teléfono:</div>
             <div id="tTel" class="value">—</div>
+          </div>
+          <div class="row row-full">
+            <div class="label">Correo:</div>
+            <div id="tCorreo" class="value" style="word-break: break-all;">—</div>
           </div>
         </div>
 
@@ -336,9 +352,9 @@
       el('tTitle').textContent = qs.get('titulo') || 'MUCH · Premio';
       el('tFolio').textContent = qs.get('folio') || 'Folio: ...';
       el('tNombre').textContent = qs.get('nombre') || '—';
-      el('tPremio').textContent = qs.get('premio') || 'Entrada General';
+      el('tPremio').textContent = qs.get('titulo') || 'Visita General(Museo + Planetario)'; // Usar el título dinámico
       el('tFecha').textContent = `${fmt.format(hoy)} al ${fmt.format(fin)}`;
-      el('tLugar').innerHTML = qs.get('lugar') || 'Museo Chiapas';
+      el('tLugar').innerHTML = qs.get('ubicacion') || 'Museo Chiapas'; // Usar la ubicación dinámica
       el('tCorreo').textContent = qs.get('correo') || '—';
       el('tTel').textContent = qs.get('telefono') || '—';
     })();
@@ -350,21 +366,22 @@
       const params = new URLSearchParams(window.location.search);
       const container = document.getElementById("qrcode");
 
+      // Buscamos 'folio' (que es lo que manda registro.html) o 'ticket' como respaldo
       const folio = params.get('folio') || params.get('ticket');
 
       if (folio && container) {
-        // Detectamos si es local (para dev) o prod
+        // Detectamos si es local o producción para crear el link correcto
         const isLocal = window.location.href.includes('localhost') || window.location.href.includes('127.0.0.1');
 
-        // Ajustamos la URL base a 'sala_energia' para GitHub Pages
+        // AJUSTA '/entrada-much' si tu carpeta local tiene otro nombre
         const baseUrl = isLocal
-          ? window.location.origin
-          : 'https://glesantonio4.github.io/sala_energia';
+          ? window.location.origin + '/entrada-much'
+          : 'https://glesantonio4.github.io/entrada-much';
 
-        // Endpoint de validación
+        // Link final que leerá el guardia
         const validationUrl = `${baseUrl}/validar.html?folio=${folio}`;
 
-        console.log("QR apunta a:", validationUrl);
+        console.log("QR apunta a:", validationUrl); // Debug
 
         container.innerHTML = '';
         new QRCode(container, {
@@ -379,7 +396,7 @@
         container.innerHTML = '<span style="font-size:0.75rem;color:#94a3b8;">Código no disponible</span>';
       }
 
-      // 2. COMPARTIR IMAGEN
+      // 2. COMPARTIR IMAGEN (Lógica intacta)
       const btnShare = document.getElementById('btnShareImage');
       if (btnShare) {
         btnShare.addEventListener('click', async () => {
@@ -388,18 +405,37 @@
           btnShare.disabled = true;
           try {
             const element = document.getElementById('boletoCaptura');
-            const canvas = await html2canvas(element, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+
+            // ── Forzar ancho fijo para que la captura salga "cuadradita" ──
+            const origWidth = element.style.width;
+            const origMaxW = element.style.maxWidth;
+            element.style.width = '600px';
+            element.style.maxWidth = '600px';
+
+            const canvas = await html2canvas(element, {
+              scale: 3,
+              backgroundColor: '#ffffff',
+              useCORS: true,
+              windowWidth: 600
+            });
+
+            // ── Restaurar estilos originales ──
+            element.style.width = origWidth;
+            element.style.maxWidth = origMaxW;
 
             canvas.toBlob(async (blob) => {
-              const file = new File([blob], "Boleto_MUCH.png", { type: "image/png" });
+              const fileName = `Boleto_MUCH_${folio || Date.now()}.png`;
+              const file = new File([blob], fileName, { type: "image/png" });
 
+              // Intento de compartir nativo (celular)
               if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
                 try {
                   await navigator.share({ files: [file], title: 'Mi Boleto MUCH', text: '¡Gané una entrada!' });
                   btnShare.textContent = '¡Enviado!';
-                } catch (err) { downloadImage(blob); }
+                } catch (err) { downloadImage(blob, fileName); }
               } else {
-                downloadImage(blob);
+                // Descarga en PC
+                downloadImage(blob, fileName);
                 alert("Imagen descargada. Compártela manualmente.");
               }
               setTimeout(() => { btnShare.textContent = originalText; btnShare.disabled = false; }, 2000);
@@ -411,114 +447,10 @@
         });
       }
 
-      function downloadImage(blob) {
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'Boleto_MUCH.png'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      function downloadImage(blob, fileName) {
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fileName || 'Boleto_MUCH.png'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
       }
     });
-  </script>
-
-  <!-- ✅ START: Supabase Logic (Preserved) -->
-  <script type="module">
-    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-    const SUPABASE_URL = 'https://qwgaeorsymfispmtsbut.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3Z2Flb3JzeW1maXNwbXRzYnV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzODcyODUsImV4cCI6MjA3Nzk2MzI4NX0.FThZIIpz3daC9u8QaKyRTpxUeW0v4QHs5sHX2s1U1eo';
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    const qs = new URLSearchParams(location.search);
-
-    let prizeData = null;
-    try {
-      const raw = localStorage.getItem('much_quiz_prize');
-      if (raw) prizeData = JSON.parse(raw);
-    } catch (_) { }
-
-    const nombreRaw = qs.get('nombre') || '';
-    const correoRaw = qs.get('correo') || '';
-    const telRaw = qs.get('telefono') || '';
-    const premioLabel = (prizeData?.label) || qs.get('premio') || 'Entrada general';
-    const folioRaw = qs.get('folio') || '';
-
-    // Si viene de prizeData, folio ya está. Si no, tomamos del QS.
-    const folio = (prizeData?.folio) || folioRaw || null;
-
-    const nombre = nombreRaw.trim().replace(/\s+/g, ' ');
-    const correo = correoRaw.trim().toLowerCase();
-    const telefono = telRaw.trim();
-
-    function addDays(date, days) {
-      return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
-    }
-
-    async function upsertParticipante(nombre, correo, telefono) {
-      if (!correo) return null;
-      try {
-        let { data, error } = await supabase
-          .from('participantes')
-          .select('id')
-          .eq('correo', correo)
-          .limit(1);
-
-        if (!error && data && data.length) {
-          return data[0].id;
-        }
-
-        ({ data, error } = await supabase
-          .from('participantes')
-          .insert({ nombre, correo, telefono })
-          .select('id')
-          .single());
-
-        if (error) {
-          console.warn('[boleto] Error insertando participante:', error.message);
-          return null;
-        }
-        return data?.id || null;
-      } catch (e) {
-        return null;
-      }
-    }
-
-    async function getPremioId(label) {
-      try {
-        let query = supabase.from('premios').select('id, nombre, tipo').limit(1);
-        const lower = (label || '').toLowerCase();
-        if (lower.includes('planetario')) query = query.eq('tipo', 'planetario');
-        else if (lower.includes('museo')) query = query.eq('tipo', 'museo');
-        else if (label) query = query.ilike('nombre', label);
-
-        const { data } = await query;
-        if (data && data.length) return data[0].id;
-        return null;
-      } catch (e) { return null; }
-    }
-
-    async function ensureBoleto({ participante_id, folio, premioLabel }) {
-      if (!participante_id || !folio) return;
-      try {
-        let { data } = await supabase.from('boletos').select('id').eq('folio', folio).limit(1);
-        if (data && data.length) return;
-
-        const hoy = new Date();
-        const desde = hoy.toISOString().slice(0, 10);
-        const hasta = addDays(hoy, 7).toISOString().slice(0, 10);
-        const premio_id = await getPremioId(premioLabel);
-
-        const payload = { participante_id, folio, valido_desde: desde, valido_hasta: hasta };
-        if (premio_id) payload.premio_id = premio_id;
-
-        await supabase.from('boletos').insert(payload);
-      } catch (e) { }
-    }
-
-    (async () => {
-      try {
-        if (!folio) return;
-        const participante_id = await upsertParticipante(nombre, correo, telefono);
-        await ensureBoleto({ participante_id, folio, premioLabel });
-      } catch (e) { }
-    })();
   </script>
 </body>
 

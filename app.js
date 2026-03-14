@@ -307,7 +307,7 @@ class PrizeManager {
     this.PRIZES = [
       { key: 'museo', title: 'MUCH · Museo', label: 'Entrada al Museo MUCH', lugar: 'Museo Chiapas (MUCH)', emoji: '🏛️' },
       { key: 'planetario', title: 'MUCH · Planetario', label: 'Entrada al Planetario MUCH', lugar: 'Planetario MUCH', emoji: '🔭' },
-      { key: 'general', title: 'MUCH · Visita General', label: 'Visita General (Museo + Planetario)', lugar: 'Museo y Planetario', emoji: '🌟' },
+      { key: 'general', title: 'MUCH · Visita General', label: 'Visita General(Museo+ much)', lugar: 'Museo y Planetario', emoji: '🌟' },
     ];
   }
   random() { return this.PRIZES[Math.floor(Math.random() * this.PRIZES.length)]; }

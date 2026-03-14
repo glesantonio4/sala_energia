@@ -98,9 +98,23 @@
     <h1>MUCH</h1>
     <p class="sub">Aprende y gana premios!! 🎁</p>
 
-    <a class="btn" href="index.html?from=portada">🚀 Jugar ahora</a>
+    <a class="btn" id="btnJugar" href="index.html?from=portada">🚀 Jugar ahora</a>
     <p class="tip">Tip: Lee cuidadosamente las preguntas 🦖</p>
   </main>
+
+  <script>
+    // 🛡️ GUARDAR EL LUGAR DESDE LA PORTADA TAMBIÉN (POR SI ENTRAN DIRECTO AQUÍ)
+    const params = new URLSearchParams(window.location.search);
+    const lugar = params.get('lugar');
+    if (lugar && lugar.trim() !== "") {
+      localStorage.setItem('much_lugar_seguro', lugar);
+    }
+
+    // PASAR LOS PARÁMETROS AL BOTÓN DE JUGAR
+    const btnJugar = document.getElementById('btnJugar');
+    params.set('from', 'portada');
+    btnJugar.href = 'index.html?' + params.toString();
+  </script>
 </body>
 </html>
 
